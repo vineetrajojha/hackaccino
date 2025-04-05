@@ -110,4 +110,4 @@ def get_prediction():
     return jsonify({'prediction': current_prediction})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)  # Different port from main.py
+    app.run(debug=True, port=5173)  # Different port from main.py

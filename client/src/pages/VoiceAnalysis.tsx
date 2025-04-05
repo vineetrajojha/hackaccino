@@ -11,19 +11,25 @@ import {
   AudioWaveformIcon as Waveform,
   Gauge,
   MessageSquare,
+  Loader,
 } from "lucide-react"
 
 const VoiceAnalysis = () => {
   const [isRecording, setIsRecording] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [volume, setVolume] = useState(0)
   const [pitch, setPitch] = useState(0)
   const [clarity, setClarity] = useState(0)
   const [pace, setPace] = useState(0)
   const [feedback, setFeedback] = useState("")
+  const [error, setError] = useState("")
+  const [analysisResult, setAnalysisResult] = useState(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const animationRef = useRef<number | null>(null)
+  const audioRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
 
   useEffect(() => {
     return () => {
@@ -35,6 +41,9 @@ const VoiceAnalysis = () => {
       }
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
+      }
+      if (audioRecorderRef.current) {
+        audioRecorderRef.current.stop()
       }
     }
   }, [])
@@ -61,10 +70,24 @@ const VoiceAnalysis = () => {
   }, [volume, pitch, clarity, pace, isRecording])
 
   const startRecording = async () => {
+    setError("")
+    audioChunksRef.current = []
+    
     try {
+      // Start local recording visualization
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       mediaStreamRef.current = stream
 
+      // Set up browser's MediaRecorder for actual audio capture
+      audioRecorderRef.current = new MediaRecorder(stream)
+      audioRecorderRef.current.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      })
+      audioRecorderRef.current.start()
+
+      // Set up audio analysis for visualization
       audioContextRef.current = new AudioContext()
       analyserRef.current = audioContextRef.current.createAnalyser()
       const source = audioContextRef.current.createMediaStreamSource(stream)
@@ -91,20 +114,87 @@ const VoiceAnalysis = () => {
 
       setIsRecording(true)
       updateMetrics()
+      
+      // Also notify the backend to start recording (optional, use if backend needs to record too)
+      try {
+        await fetch('http://localhost:5173/api/start-recording', {
+          method: 'POST',
+        })
+      } catch (e) {
+        console.warn("Could not start backend recording. Using client-side only.", e)
+      }
     } catch (error) {
       console.error("Error accessing microphone:", error)
+      setError("Failed to access microphone. Please check your microphone permissions.")
     }
   }
 
-  const stopRecording = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop())
+  const stopRecording = async () => {
+    setIsAnalyzing(true)
+    
+    try {
+      // Stop local recording
+      if (audioRecorderRef.current) {
+        audioRecorderRef.current.stop()
+      }
+      
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop())
+      }
+      
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+      
+      // Try to stop backend recording
+      try {
+        await fetch('http://localhost:5173/api/stop-recording', {
+          method: 'POST',
+        })
+      } catch (e) {
+        console.warn("Could not stop backend recording. Continuing with analysis.", e)
+      }
+      
+      // Create audio blob and send to server for analysis
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
+      const formData = new FormData()
+      formData.append('audio', audioBlob)
+      
+      const analyzeResponse = await fetch('http://localhost:5173/api/analyze-voice', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!analyzeResponse.ok) {
+        throw new Error(`Server returned ${analyzeResponse.status}: ${await analyzeResponse.text()}`)
+      }
+      
+      const result = await analyzeResponse.json()
+      setAnalysisResult(result)
+      
+      // Update UI with real analysis values
+      setVolume(Math.min(result.energy_mean * 2000, 100)) // Scale energy to percentage
+      setPitch(Math.min(result.pitch_mean / 4, 100)) // Scale pitch to percentage
+      setClarity(result.confidence_score)
+      setPace(Math.max(0, 100 - result.pause_count * 10)) // Invert pause count
+      
+      // Set feedback based on analysis suggestions
+      if (result.suggestions && result.suggestions.length > 0) {
+        setFeedback(result.suggestions[0])
+      }
+      
+    } catch (error) {
+      console.error("Error analyzing voice:", error)
+      setError("Failed to analyze recording. Please try again.")
+      // Reset to default metrics
+      setVolume(0)
+      setPitch(0)
+      setClarity(0)
+      setPace(0)
+    } finally {
+      setIsRecording(false)
+      setIsAnalyzing(false)
     }
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current)
-    }
-    setIsRecording(false)
-    setFeedback("")
   }
 
   const getColorForValue = (value: number) => {
@@ -138,11 +228,36 @@ const VoiceAnalysis = () => {
               : "bg-gradient-to-r from-rose-500 to-rose-400 text-white hover:shadow-lg hover:from-rose-600 hover:to-rose-500"
           }`}
           onClick={isRecording ? stopRecording : startRecording}
+          disabled={isAnalyzing}
         >
-          <Mic className="w-5 h-5" />
-          <span>{isRecording ? "Stop Recording" : "Start Recording"}</span>
+          {isAnalyzing ? (
+            <>
+              <Loader className="w-5 h-5 animate-spin" />
+              <span>Analyzing...</span>
+            </>
+          ) : (
+            <>
+              <Mic className="w-5 h-5" />
+              <span>{isRecording ? "Stop Recording" : "Start Recording"}</span>
+            </>
+          )}
         </button>
       </motion.div>
+
+      {/* Error message */}
+      <AnimatePresence>
+        {error && (
+          <motion.div 
+            className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <p className="text-red-700">{error}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.div
         className="bg-white rounded-2xl shadow-md p-6 border border-rose-100"
@@ -236,13 +351,13 @@ const VoiceAnalysis = () => {
               <div className="h-3 bg-rose-100 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full rounded-full"
-                  // style={{
-                  //   backgroundColor: getColorForValue(metric.value),
-                  //   width: ${metric.value}%,
-                  // }}
-                  // initial={{ width: 0 }}
-                  // animate={{ width: ${metric.value}% }}
-                  // transition={{ duration: 0.5 }}
+                  style={{
+                    backgroundColor: getColorForValue(metric.value),
+                    width: `${metric.value}%`,
+                  }}
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${metric.value}%` }}
+                  transition={{ duration: 0.5 }}
                 />
               </div>
             </motion.div>
@@ -251,7 +366,7 @@ const VoiceAnalysis = () => {
 
         {/* Live feedback */}
         <AnimatePresence>
-          {isRecording && feedback && (
+          {feedback && (
             <motion.div
               className="mt-6 bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-center gap-3"
               initial={{ opacity: 0, y: 10 }}
@@ -261,6 +376,26 @@ const VoiceAnalysis = () => {
             >
               <AlertCircle className="w-5 h-5 text-rose-500" />
               <p className="text-rose-700 font-medium">{feedback}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Result PDF download */}
+        <AnimatePresence>
+          {analysisResult && analysisResult.report_pdf && (
+            <motion.div
+              className="mt-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <a 
+                href={`data:application/pdf;base64,${analysisResult.report_pdf}`}
+                download="voice-analysis-report.pdf"
+                className="block w-full text-center bg-rose-100 hover:bg-rose-200 text-rose-700 font-medium py-3 px-4 rounded-lg transition-colors duration-300"
+              >
+                Download Full Analysis Report (PDF)
+              </a>
             </motion.div>
           )}
         </AnimatePresence>
@@ -316,17 +451,17 @@ const VoiceAnalysis = () => {
                 <div className="relative w-full">
                   <motion.div
                     className="w-8 bg-rose-400 rounded-t-lg mx-auto"
-                    // style={{ height: ${Math.random() * 50 + 30}% }}
-                    // initial={{ height: 0 }}
-                    // animate={{ height: ${Math.random() * 50 + 30}% }}
-                    // transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
+                    style={{ height: `${Math.random() * 50 + 30}%` }}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.random() * 50 + 30}%` }}
+                    transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
                   />
                   <motion.div
                     className="w-8 bg-rose-200 rounded-t-lg mx-auto absolute bottom-0 left-0 right-0"
-                    // style={{ height: ${Math.random() * 20 + 10}% }}
-                    // initial={{ height: 0 }}
-                    // animate={{ height: ${Math.random() * 20 + 10}% }}
-                    // transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
+                    style={{ height: `${Math.random() * 20 + 10}%` }}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.random() * 20 + 10}%` }}
+                    transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
                   />
                 </div>
                 <span className="text-xs text-gray-500">
