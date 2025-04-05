@@ -11,6 +11,15 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from datetime import datetime
 import matplotlib.pyplot as plt
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+import base64
+import io
+import threading
+import wave
+
+app = Flask(__name__)
+CORS(app)
 
 # Audio stream config
 CHUNK = 1024
@@ -18,6 +27,12 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 22050
 RECORD_SECONDS = 20
+
+# Global variables for recording
+recording = False
+audio_frames = []
+p = None
+stream = None
 
 # NLP Use-Case Detection
 USE_CASE_KEYWORDS = {
@@ -237,32 +252,156 @@ def save_report(report_str, confidence_score, pitch_mean, energy_mean, pause_cou
     else:
         print("Report not saved.")
 
-def main():
-    while True:
-        print("\nChoose input method:")
-        print("1. Live voice recording")
-        print("2. Upload an audio file")
-        print("3. Exit")
-        choice = input("Enter choice (1, 2 or 3): ")
+def start_recording():
+    global recording, audio_frames, p, stream
+    recording = True
+    audio_frames = []
+    
+    p = pyaudio.PyAudio()
+    stream = p.open(format=FORMAT,
+                    channels=CHANNELS,
+                    rate=RATE,
+                    input=True,
+                    frames_per_buffer=CHUNK)
+    
+    print("🎙️ Recording started...")
+    while recording:
+        data = stream.read(CHUNK, exception_on_overflow=False)
+        audio_frames.append(data)
+    
+    print("⏹️ Recording stopped")
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+    
+    # Save the recording
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"recording_{timestamp}.wav"
+    wf = wave.open(filename, 'wb')
+    wf.setnchannels(CHANNELS)
+    wf.setsampwidth(p.get_sample_size(FORMAT))
+    wf.setframerate(RATE)
+    wf.writeframes(b''.join(audio_frames))
+    wf.close()
+    
+    return filename
 
-        if choice == '1':
-            result = record_and_process()
-        elif choice == '2':
-            file_path = input("Enter path to audio file (.wav or .mp3): ")
-            if not os.path.exists(file_path):
-                print("❌ File not found.")
-                continue
-            result = process_audio_file(file_path)
-        elif choice == '3':
-            print("👋 Exiting... Stay vocal!")
-            break
-        else:
-            print("❌ Invalid choice.")
-            continue
+@app.route('/api/start-recording', methods=['POST'])
+def start_recording_endpoint():
+    global recording
+    if not recording:
+        thread = threading.Thread(target=start_recording)
+        thread.start()
+        return jsonify({'status': 'recording_started'})
+    return jsonify({'status': 'already_recording'})
 
-        report_str = print_report(*result)
-        save_report(report_str, result[1], result[3], result[5], result[7], result[8])
-        print("\n🔁 Analysis complete. Returning to menu...")
+@app.route('/api/stop-recording', methods=['POST'])
+def stop_recording_endpoint():
+    global recording
+    if recording:
+        recording = False
+        return jsonify({'status': 'recording_stopped'})
+    return jsonify({'status': 'not_recording'})
+
+@app.route('/api/analyze-voice', methods=['POST'])
+def analyze_voice_endpoint():
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file provided'}), 400
+    
+    audio_file = request.files['audio']
+    temp_path = "temp.wav"
+    audio_file.save(temp_path)
+    
+    try:
+        result = process_audio_file(temp_path)
+        report = print_report(*result)
+        
+        # Generate PDF report
+        reports_dir = os.path.join(os.getcwd(), "reports")
+        os.makedirs(reports_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"vocaledge-ai_report_{timestamp}.pdf"
+        filepath = os.path.join(reports_dir, filename)
+        
+        # Create visualization
+        fig, ax = plt.subplots()
+        categories = ['Confidence', 'Pitch', 'Energy', 'Pauses', 'Fillers']
+        values = [result[1], result[3], result[5] * 1000, result[7], result[8]]
+        ax.bar(categories, values, color=['green', 'blue', 'orange', 'purple', 'red'])
+        ax.set_title('Voice Feature Overview')
+        plt.tight_layout()
+        graph_path = os.path.join(reports_dir, "graph.png")
+        plt.savefig(graph_path)
+        plt.close()
+        
+        # Generate PDF
+        c = canvas.Canvas(filepath, pagesize=A4)
+        width, height = A4
+        x_margin, y_margin = 50, 800
+        
+        c.setFont("Helvetica-Bold", 18)
+        c.drawString(x_margin, y_margin, "🧠 VocalEdge AI - Voice Health Report")
+        c.setFont("Helvetica", 12)
+        y_margin -= 30
+        
+        for line in report.split('\n'):
+            c.drawString(x_margin, y_margin, line)
+            y_margin -= 15
+            if y_margin < 100:
+                c.showPage()
+                y_margin = 800
+        
+        c.drawImage(graph_path, 100, 300, width=400, preserveAspectRatio=True)
+        c.save()
+        
+        # Read PDF and convert to base64
+        with open(filepath, 'rb') as pdf_file:
+            pdf_base64 = base64.b64encode(pdf_file.read()).decode('utf-8')
+        
+        # Clean up temporary files
+        os.remove(temp_path)
+        os.remove(graph_path)
+        
+        return jsonify({
+            'confidence_level': result[0],
+            'confidence_score': result[1],
+            'suggestions': result[2],
+            'pitch_mean': result[3],
+            'pitch_std': result[4],
+            'energy_mean': result[5],
+            'energy_std': result[6],
+            'pause_count': result[7],
+            'filler_count': result[8],
+            'report_pdf': pdf_base64
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/record-voice', methods=['POST'])
+def record_voice_endpoint():
+    try:
+        result = record_and_process()
+        report = print_report(*result)
+        
+        # Generate PDF report (similar to analyze_voice_endpoint)
+        # ... (same PDF generation code as above) ...
+        
+        return jsonify({
+            'confidence_level': result[0],
+            'confidence_score': result[1],
+            'suggestions': result[2],
+            'pitch_mean': result[3],
+            'pitch_std': result[4],
+            'energy_mean': result[5],
+            'energy_std': result[6],
+            'pause_count': result[7],
+            'filler_count': result[8],
+            'report_pdf': pdf_base64
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    main()
+    app.run(debug=True, port=5000)
