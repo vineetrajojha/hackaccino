@@ -1,4 +1,3 @@
-import pyaudio
 import numpy as np
 np.complex = complex  # Fix for librosa compatibility
 
@@ -14,11 +13,9 @@ from reportlab.pdfgen import canvas
 from datetime import datetime
 import matplotlib.pyplot as plt
 from reportlab.lib.utils import ImageReader
+import traceback
 
 # Audio stream config
-CHUNK = 1024
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
 RATE = 22050
 RECORD_SECONDS = 20
 
@@ -46,9 +43,10 @@ USE_CASE_SUGGESTIONS = {
         "Use pauses strategically for emphasis."
     ]
 }
+
 def check_initial_silence(y, sr, threshold=0.01, duration_sec=5):
     check_samples = int(sr * duration_sec)
-    energy = np.mean(np.abs(y[:cck_samples]))
+    energy = np.mean(np.abs(y[:check_samples]))
     if energy < threshold:
         print("⚠️ You remained silent in the first few seconds. Try starting promptly.")
 
@@ -151,9 +149,9 @@ def analyze_voice(y, rate):
         pass
 
     return (confidence_level, confidence_score, suggestions, 
-            pitch_mean, pitch_std, energy_mean, energy_std, pauunt, fillerpasssr, output_path="spectrogram.png"):
-    import librosa.display
+            pitch_mean, pitch_std, energy_mean, energy_std, pause_count, filler_count)
 
+def generate_spectrogram(y, sr):
     plt.figure(figsize=(12, 6))
 
     # Waveform (top)
@@ -174,32 +172,55 @@ def analyze_voice(y, rate):
     plt.xlabel("Time (s)")
 
     plt.tight_layout()
-    plt.savefig(output_path)
+    plt.savefig("spectrogram.png")
     plt.close()
-    return output_path
-
+    return "spectrogram.png"
 
 def process_audio_file(file_path):
-    y, sr = librosa.load(file_path, sr=RATE)
-    sf.write("temp.wav", y, sr)
-    return analyze_voice(y, sr), y, sr
+    try:
+        # Try to load the audio file with librosa, which supports various formats
+        y, sr = librosa.load(file_path, sr=RATE)
+        
+        # Convert to mono if stereo
+        if len(y.shape) > 1:
+            y = librosa.to_mono(y)
+        
+        # Normalize audio
+        y = librosa.util.normalize(y)
+        
+        # Save as WAV for speech recognition
+        temp_wav_path = "temp.wav"
+        sf.write(temp_wav_path, y, sr)
+        
+        # Analyze the voice
+        analysis_results = analyze_voice(y, sr)
+        
+        # Clean up temporary file
+        if os.path.exists(temp_wav_path):
+            os.remove(temp_wav_path)
+            
+        return analysis_results, y, sr
+    except Exception as e:
+        print(f"Error processing audio file: {str(e)}")
+        print(traceback.format_exc())
+        raise Exception(f"Failed to process audio file: {str(e)}")
 
 def record_and_process():
-    p = pyaudio.PyAudio()
-    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
     print("\n🎙️ Speak now... (Recording for 20 seconds)")
-    frames = []
-    for _ in range(int(RATE / CHUNK * RECORD_SECONDS)):
-        data = stream.read(CHUNK, exception_on_overflow=False)
-        frames.append(data)
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
+    r = sr.Recognizer()
+    with sr.Microphone() as source:
+        audio = r.listen(source)
     print("🔍 Processing your voice...")
-    audio_data = b''.join(frames)
-    y = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32)
-    sf.write("temp.wav", y, RATE)
-    return analyze_voice(y, RATE), y, RATE
+    try:
+        transcribed_text = r.recognize_google(audio)
+        use_case = detect_use_case_from_text(transcribed_text)
+        result = analyze_voice(audio.get_array_of_samples(), audio.sample_rate)
+        result = (result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7], result[8])
+        if use_case:
+            result[2] += get_custom_suggestions(use_case)
+        return result, audio.get_array_of_samples(), audio.sample_rate
+    except Exception:
+        return ("No Voice", 0, ["Please speak clearly and close to the mic."], 0, 0, 0, 0, 0, 0), audio.get_array_of_samples(), audio.sample_rate
 
 def print_report(level, score, suggestions, pitch_mean, pitch_std, energy_mean, energy_std, pause_count, filler_count):
     report = "\n🧠 Voice Health Report\n"
@@ -207,24 +228,24 @@ def print_report(level, score, suggestions, pitch_mean, pitch_std, energy_mean, 
     report += f"Pitch Mean: {pitch_mean:.1f} Hz, Pitch STD: {pitch_std:.2f}\n"
     report += f"Energy Mean: {energy_mean:.5f}, Energy STD: {energy_std:.5f}\n"
     report += f"Pauses Detected: {pause_count}, Fillers Estimated: {filler_count}\n"
+    
     if suggestions:
-        report += "\nSuggestions         save_choice = input("Do you want to save the report as PDF? (y/n): ")
-    if save_choice.lower() == 'y':
-to Improve:\n"
+        report += "\nSuggestions to Improve:\n"
         for s in suggestions:
-                report += f"- {s}\n"
+            report += f"- {s}\n"
     else:
-        rep    ort += "✅ Your voice sounds confident and fluent!\n"
-        print(report)
+        report += "✅ Your voice sounds confident and fluent!\n"
+    
+    print(report)
     return report
 
 def save_report(report_str, confidence_score, pitch_mean, energy_mean, pause_count, filler_count, y, sr):
     save_choice = input("Do you want to save the report as PDF? (y/n): ")
     if save_choice.lower() == 'y':
-        reports_dir = os.path.join(os.getcwd    (), "reports")
+        reports_dir = os.path.join(os.getcwd(), "reports")
         os.makedirs(reports_dir, exist_ok=True)
 
-        timestamp = datetime.now().strft    ime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"vocaledge-ai_report_{timestamp}.pdf"
         filepath = os.path.join(reports_dir, filename)
 
@@ -236,7 +257,7 @@ def save_report(report_str, confidence_score, pitch_mean, energy_mean, pause_cou
             x_margin, y_margin = 50, 800
 
             c.setFont("Helvetica-Bold", 18)
-            c.dr    awString(x_margin, y_margin, "🧠 VocalEdge AI - Voice Health Report")
+            c.drawString(x_margin, y_margin, "🧠 VocalEdge AI - Voice Health Report")
             c.setFont("Helvetica", 12)
             y_margin -= 30
 
