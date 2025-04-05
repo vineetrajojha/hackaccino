@@ -129,13 +129,13 @@ const DoctorConnect = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-white via-white to-pink-200 p-8">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-6xl mx-auto"
       >
-        <h1 className="text-4xl font-bold text-gray-900 mb-8 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+        <h1 className="text-4xl font-bold text-gray-900 mb-8 bg-clip-text text-transparent bg-gradient-to-r from-rose-600 to-rose-400">
           Connect with Voice & Speech Specialists
         </h1>
 
@@ -152,7 +152,7 @@ const DoctorConnect = () => {
                   <motion.div
                     key={doctor.id}
                     whileHover={{ scale: 1.02 }}
-                    className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 cursor-pointer"
+                    className="bg-gradient-to-r from-rose-300 to-rose-200 rounded-xl p-4 cursor-pointer"
                     onClick={() => setSelectedDoctor(doctor)}
                   >
                     <div className="flex items-center gap-4">
@@ -176,7 +176,7 @@ const DoctorConnect = () => {
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="flex-1 bg-indigo-600 text-white py-2 rounded-lg flex items-center justify-center gap-2"
+                        className="flex-1 bg-rose-500 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedDoctor(doctor);

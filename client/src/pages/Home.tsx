@@ -64,7 +64,7 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-indigo-50">
       
       {/* Hero Section */}
       <div className="px-4 py-20 sm:px-6 lg:px-8">
@@ -76,13 +76,13 @@ const Home = () => {
           <motion.div
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 px-4 py-2 rounded-full mb-6"
+            className="inline-flex items-center gap-2 bg-rose-300 px-4 py-2 rounded-full mb-6"
           >
             <Sparkles className="w-4 h-4" />
             <span className="text-sm font-medium">AI-Powered Voice Training</span>
           </motion.div>
           
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-6">
+          <h1 className="text-6xl font-bold bg-gradient-to-r from-rose-600 to-rose-400 bg-clip-text text-transparent mb-6">
             Master Your Voice with VocalEdge AI
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
@@ -93,7 +93,7 @@ const Home = () => {
             <Button
               size="lg"
               icon={<Mic className="w-5 h-5" />}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600"
+              className="bg-rose-400"
             >
               Start Free Trial
             </Button>
@@ -113,7 +113,7 @@ const Home = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto ">
           {stats.map((stat, index) => (
             <Card key={stat.label} 
-            className='bg-black'
+            className='bg-rose-200'
             >
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -125,8 +125,8 @@ const Home = () => {
                   <stat.icon className={`w-6 h-6 ${stat.color}`} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-200">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-400">{stat.value}</p>
+                  <p className="text-sm text-neutral-800">{stat.label}</p>
+                  <p className="text-2xl font-bold text-neutral-800">{stat.value}</p>
                 </div>
               </motion.div>
             </Card>
@@ -138,7 +138,7 @@ const Home = () => {
       <div className="px-4 py-16 sm:px-6 lg:px-8 bg-gradient-to-br from-white via-purple-50 to-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold text-rose-500 mb-4">
               Powerful Features for Voice Mastery
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -194,7 +194,7 @@ const Home = () => {
       <div className="px-4 py-16 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold text-rose-700 mb-4">
               How VocalEdge Works
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -203,7 +203,7 @@ const Home = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {howItWorks.map((step, index) => (
-              <Card key={step.title} className="relative bg-black">
+              <Card key={step.title} className="relative bg-gradient-to-r from-rose-200 to-rose-200">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -213,10 +213,10 @@ const Home = () => {
                   <div className="mx-auto p-3 bg-gradient-to-br from-purple-100 to-indigo-200 rounded-full w-16 h-16 flex items-center justify-center">
                     <step.icon className="w-8 h-8 text-purple-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-200">
+                  <h3 className="text-xl font-semibold text-neutral-700">
                     {step.title}
                   </h3>
-                  <p className="text-gray-500">
+                  <p className="text-gray-600">
                     {step.description}
                   </p>
                 </motion.div>
@@ -230,7 +230,7 @@ const Home = () => {
       <div className="px-4 py-16 sm:px-6 lg:px-8 bg-gradient-to-br from-purple-50 via-white to-purple-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold text-rose-700 mb-4">
               See VocalEdge in Action
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -248,10 +248,10 @@ const Home = () => {
     {
       title: "Step 1: Start",
       content: <div className="p-6">
-        <h2 className="text-2xl font-semibold mb-4">Step 1: Vocal Edge Ai introduction</h2>
-      <p className="text-lg mb-4">This is where you begin your journey with VocalEdge.</p>
-      <p className="text-lg mb-4">Unlock the power of your voice through guided training and smart feedback.</p>
-      <p className="text-lg mb-6">Whether you're preparing for a presentation or improving daily communication, VocalEdge is your partner in vocal growth.</p>
+        <h2 className="text-2xl font-semibold mb-4 text-neural-500">Step 1: Vocal Edge Ai introduction</h2>
+      <p className="text-lg mb-4 text-neural-500">This is where you begin your journey with VocalEdge.</p>
+      <p className="text-lg mb-4 text-neural-500">Unlock the power of your voice through guided training and smart feedback.</p>
+      <p className="text-lg mb-6 text-neural-500">Whether you're preparing for a presentation or improving daily communication, VocalEdge is your partner in vocal growth.</p>
     
       {/* Image Grid */}
       <div className="flex flex-col gap-6">
@@ -348,12 +348,12 @@ const Home = () => {
         <div className="flex gap-4">
           <img
             className="w-2/3 h-64 object-cover rounded-xl"
-            src="https://images.unsplash.com/photo-1614850523454-3b1ab3f3d2cf?q=80&w=1074"
+            src="https://plus.unsplash.com/premium_photo-1679082305620-fa44b9a3b6ad?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
             alt="AI analyzing speech patterns"
           />
           <img
             className="w-1/3 h-64 object-cover rounded-xl"
-            src="https://images.unsplash.com/photo-1573496267526-08fef9ff76cb?q=80&w=500"
+            src="https://images.unsplash.com/photo-1724125039015-e48bcead909d?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
             alt="User practicing speech"
           />
         </div>
@@ -362,12 +362,12 @@ const Home = () => {
         <div className="flex gap-4">
           <img
             className="w-2/3 h-64 object-cover rounded-xl"
-            src="https://images.unsplash.com/photo-1603575448367-9c3a38284f2d?q=80&w=1074"
+            src="https://images.unsplash.com/photo-1660794486044-ff1072c442f9?q=80&w=1631&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
             alt="Speaking confidently"
           />
           <img
             className="w-1/3 h-64 object-cover rounded-xl"
-            src="https://images.unsplash.com/photo-1583241801986-7e4c7d42c2d6?q=80&w=500"
+            src="https://plus.unsplash.com/premium_photo-1661544807248-2786202627e8?q=80&w=1744&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
             alt="Speech training screen"
           />
         </div>

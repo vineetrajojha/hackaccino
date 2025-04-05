@@ -16,8 +16,8 @@ const FeatureCard: React.FC<FeatureProps> = ({ icon: Icon, title, description })
     className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20"
   >
     <Icon className="w-6 h-6 text-indigo-400 mb-2 " />
-    <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-    <p className="text-gray-300 text-sm">{description}</p>
+    <h3 className="text-lg font-semibold text-neutral-800 mb-1">{title}</h3>
+    <p className="text-neutral-500 text-sm">{description}</p>
   </motion.div>
 );
 
@@ -32,13 +32,13 @@ const SignLanguage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-white via-white to-pink-200 p-8 space-y-8">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-800">
+        <h1 className="text-4xl font-bold text-transparent bg-gradient-to-r from-rose-600 to-rose-400 bg-clip-text ">
           Sign Language Predictor
         </h1>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="bg-gradient-to-r from-indigo-800 to-purple-900 text-white px-6 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-indigo-500/30"
+          className="bg-gradient-to-r from-rose-300 to-rose-200 text-white px-6 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-indigo-500/30"
           onClick={handleStartCamera}
         >
           <Camera className="w-5 h-5" />
@@ -54,8 +54,8 @@ const SignLanguage: React.FC = () => {
           onMouseEnter={() => setShowFeatures(true)}
           onMouseLeave={() => setShowFeatures(false)}
         >
-          <div className="bg-gradient-to-br from-indigo-800 to-purple-800 rounded-xl p-6 backdrop-blur-lg border border-white/10">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <div className="bg-gradient-to-r from-rose-50 to-white rounded-xl p-6 backdrop-blur-lg border border-white/10">
+            <h2 className="text-xl font-bold text-neutral-800 mb-4 flex items-center gap-2">
               <Camera className="w-6 h-6" />
               Camera Feed
             </h2>
@@ -78,7 +78,7 @@ const SignLanguage: React.FC = () => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-indigo-900 rounded-xl p-6 grid grid-cols-2 gap-4"
+              className="absolute inset-0 bg-gradient-to-r from-rose-400 to-rose-300 rounded-xl p-6 grid grid-cols-2 gap-4"
             >
               <FeatureCard icon={Brain} title="AI Sign Interpreter" description="Real-time sign language interpretation powered by AI." />
               <FeatureCard icon={Waveform} title="Pitch Analysis" description="Advanced voice pitch analysis with detailed reports." />
@@ -89,8 +89,8 @@ const SignLanguage: React.FC = () => {
         </motion.div>
 
         {/* Predictions */}
-        <div className="bg-gradient-to-br from-indigo-800 to-purple-800 rounded-xl p-6 backdrop-blur-lg border border-white/10">
-          <h2 className="text-xl font-bold text-white mb-4">Predictions</h2>
+        <div className="bg-gradient-to-br from-rose-50 to-white text-neutral-700 rounded-xl p-6 backdrop-blur-lg border border-white/10">
+          <h2 className="text-xl font-bold text-neural-700 mb-4">Predictions</h2>
           <div className="space-y-4">
             {["Hello", "Thank You", "Please"].map((prediction, index) => (
               <motion.div
@@ -102,7 +102,7 @@ const SignLanguage: React.FC = () => {
               >
                 <Hand className="w-6 h-6 text-indigo-400" />
                 <div className="flex-1">
-                  <p className="font-medium text-white">{prediction}</p>
+                  <p className="font-medium text-neutral-800">{prediction}</p>
                   <div className="w-full h-2 bg-gray-800 rounded-full mt-2">
                     <motion.div
                       initial={{ width: 0 }}
@@ -119,8 +119,8 @@ const SignLanguage: React.FC = () => {
       </div>
 
       {/* Voice Analysis */}
-      <div className="bg-indigo-800 rounded-xl p-6 backdrop-blur-lg border border-white/10">
-        <h2 className="text-xl font-bold text-white mb-4">Voice Analysis</h2>
+      <div className="bg-gradient-to-br from-rose-50 to-white rounded-xl text-neutral-700 p-6 backdrop-blur-lg border border-white/10">
+        <h2 className="text-xl font-bold text-neural-800 mb-4">Voice Analysis</h2>
         <div className="aspect-[3/1] bg-black/20 rounded-lg p-4">
           <div className="h-full bg-[#001100] rounded border border-green-500/30 relative overflow-hidden">
             {Array.from({ length: 50 }).map((_, i) => (

@@ -41,7 +41,7 @@ function Timeline  ({ data }: { data: TimelineEntry[] }) {
       ref={containerRef}
     >
       <div className="max-w-7xl mx-auto py-10 px-4 md:px-8 lg:px-10 ">
-      <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-6">
+      <h1 className="text-5xl font-bold bg-gradient-to-r from-rose-600 to-rose-400  bg-clip-text text-transparent mb-6">
             Let's see Vocal Edge AI step by step and Explore it Together
           </h1>
        
