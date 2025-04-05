@@ -350,7 +350,7 @@ const AICoaching = () => {
                   className="bg-white rounded-2xl p-6 shadow-xl backdrop-blur-lg bg-opacity-90"
                 >
                   <h2 className="text-2xl font-bold text-gray-900 mb-6">Today's Progress</h2>
-                  <div className="space-y-6">
+                  <div className="space-y-6">  `nb`
                     <div className="flex items-center gap-4">
                       <div className="bg-green-100 p-3 rounded-xl">
                         <CheckCircle className="w-6 h-6 text-green-600" />

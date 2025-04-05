@@ -14,7 +14,7 @@ const Progress = () => {
           { icon: TrendingUp, label: 'Improvement', value: '+45%' },
           { icon: Calendar, label: 'Streak', value: '7 days' },
         ].map((stat, index) => (
-          <motion.div
+          <motion.div 
             key={index}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
