@@ -14,6 +14,9 @@ import {
   Loader,
 } from "lucide-react"
 
+// API URL configuration - adjust this to match your Flask backend
+const API_URL = "http://localhost:5173/api"
+
 const VoiceAnalysis = () => {
   const [isRecording, setIsRecording] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -24,13 +27,27 @@ const VoiceAnalysis = () => {
   const [feedback, setFeedback] = useState("")
   const [error, setError] = useState("")
   const [analysisResult, setAnalysisResult] = useState(null)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const mediaStreamRef = useRef<MediaStream | null>(null)
-  const animationRef = useRef<number | null>(null)
-  const audioRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
+  const [performanceHistory, setPerformanceHistory] = useState([])
+  const audioContextRef = useRef(null)
+  const analyserRef = useRef(null)
+  const mediaStreamRef = useRef(null)
+  const animationRef = useRef(null)
+  const audioRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
 
+  // Load performance history from localStorage
+  useEffect(() => {
+    try {
+      const history = localStorage.getItem('voiceAnalysisHistory')
+      if (history) {
+        setPerformanceHistory(JSON.parse(history))
+      }
+    } catch (err) {
+      console.error("Failed to load performance history:", err)
+    }
+  }, [])
+
+  // Cleanup function
   useEffect(() => {
     return () => {
       if (mediaStreamRef.current) {
@@ -48,8 +65,8 @@ const VoiceAnalysis = () => {
     }
   }, [])
 
+  // Live feedback generation
   useEffect(() => {
-    // Generate feedback based on metrics
     if (isRecording && volume > 0) {
       const feedbackMessages = []
 
@@ -115,9 +132,9 @@ const VoiceAnalysis = () => {
       setIsRecording(true)
       updateMetrics()
       
-      // Also notify the backend to start recording (optional, use if backend needs to record too)
+      // Notify the backend to start recording
       try {
-        await fetch('http://localhost:5173/api/start-recording', {
+        await fetch(`${API_URL}/start-recording`, {
           method: 'POST',
         })
       } catch (e) {
@@ -148,7 +165,7 @@ const VoiceAnalysis = () => {
       
       // Try to stop backend recording
       try {
-        await fetch('http://localhost:5173/api/stop-recording', {
+        await fetch(`${API_URL}/stop-recording`, {
           method: 'POST',
         })
       } catch (e) {
@@ -160,7 +177,7 @@ const VoiceAnalysis = () => {
       const formData = new FormData()
       formData.append('audio', audioBlob)
       
-      const analyzeResponse = await fetch('http://localhost:5173/api/analyze-voice', {
+      const analyzeResponse = await fetch(`${API_URL}/analyze-voice`, {
         method: 'POST',
         body: formData,
       })
@@ -183,6 +200,20 @@ const VoiceAnalysis = () => {
         setFeedback(result.suggestions[0])
       }
       
+      // Save to performance history
+      const newRecord = {
+        date: new Date().toISOString(),
+        confidence: result.confidence_score,
+        pitch: result.pitch_mean,
+        volume: result.energy_mean * 2000,
+        pauses: result.pause_count,
+        fillers: result.filler_count
+      }
+      
+      const updatedHistory = [...performanceHistory, newRecord].slice(-7) // Keep last 7 records
+      setPerformanceHistory(updatedHistory)
+      localStorage.setItem('voiceAnalysisHistory', JSON.stringify(updatedHistory))
+      
     } catch (error) {
       console.error("Error analyzing voice:", error)
       setError("Failed to analyze recording. Please try again.")
@@ -197,7 +228,7 @@ const VoiceAnalysis = () => {
     }
   }
 
-  const getColorForValue = (value: number) => {
+  const getColorForValue = (value) => {
     if (value > 80) return "#e11d48" // rose-600
     if (value > 60) return "#f43f5e" // rose-500
     return "#fb7185" // rose-400
@@ -412,22 +443,43 @@ const VoiceAnalysis = () => {
           <span>Voice Improvement Tips</span>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {tips.map((tip, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 + index * 0.1 }}
-              className="bg-gradient-to-r from-rose-50 to-white rounded-lg p-4 flex items-center gap-3 border border-rose-100 hover:shadow-md transition-shadow duration-300"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <div className="bg-rose-100 p-2 rounded-full">
-                <tip.icon className="w-5 h-5 text-rose-600" />
-              </div>
-              <p className="text-gray-700 font-medium">{tip.text}</p>
-            </motion.div>
-          ))}
+          {analysisResult && analysisResult.suggestions ? (
+            // Show real suggestions from analysis
+            analysisResult.suggestions.slice(0, 4).map((tip, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 + index * 0.1 }}
+                className="bg-gradient-to-r from-rose-50 to-white rounded-lg p-4 flex items-center gap-3 border border-rose-100 hover:shadow-md transition-shadow duration-300"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="bg-rose-100 p-2 rounded-full">
+                  <AlertCircle className="w-5 h-5 text-rose-600" />
+                </div>
+                <p className="text-gray-700 font-medium">{tip}</p>
+              </motion.div>
+            ))
+          ) : (
+            // Show default tips
+            tips.map((tip, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 + index * 0.1 }}
+                className="bg-gradient-to-r from-rose-50 to-white rounded-lg p-4 flex items-center gap-3 border border-rose-100 hover:shadow-md transition-shadow duration-300"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="bg-rose-100 p-2 rounded-full">
+                  <tip.icon className="w-5 h-5 text-rose-600" />
+                </div>
+                <p className="text-gray-700 font-medium">{tip.text}</p>
+              </motion.div>
+            ))
+          )}
         </div>
       </motion.div>
 
@@ -444,33 +496,64 @@ const VoiceAnalysis = () => {
         </h2>
 
         <div className="h-64 relative">
-          {/* Simple chart visualization */}
+          {/* Chart visualization */}
           <div className="absolute inset-0 flex items-end justify-between px-2">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 w-1/8">
-                <div className="relative w-full">
-                  <motion.div
-                    className="w-8 bg-rose-400 rounded-t-lg mx-auto"
-                    style={{ height: `${Math.random() * 50 + 30}%` }}
-                    initial={{ height: 0 }}
-                    animate={{ height: `${Math.random() * 50 + 30}%` }}
-                    transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
-                  />
-                  <motion.div
-                    className="w-8 bg-rose-200 rounded-t-lg mx-auto absolute bottom-0 left-0 right-0"
-                    style={{ height: `${Math.random() * 20 + 10}%` }}
-                    initial={{ height: 0 }}
-                    animate={{ height: `${Math.random() * 20 + 10}%` }}
-                    transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
-                  />
+            {performanceHistory.length > 0 ? (
+              // Real performance history data
+              performanceHistory.map((record, i) => {
+                const date = new Date(record.date)
+                return (
+                  <div key={i} className="flex flex-col items-center gap-2 w-1/8">
+                    <div className="relative w-full">
+                      <motion.div
+                        className="w-8 bg-rose-400 rounded-t-lg mx-auto"
+                        style={{ height: `${record.confidence}%` }}
+                        initial={{ height: 0 }}
+                        animate={{ height: `${record.confidence}%` }}
+                        transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
+                      />
+                      <motion.div
+                        className="w-8 bg-rose-200 rounded-t-lg mx-auto absolute bottom-0 left-0 right-0"
+                        style={{ height: `${(record.volume / 100) * 20}%` }}
+                        initial={{ height: 0 }}
+                        animate={{ height: `${(record.volume / 100) * 20}%` }}
+                        transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {date.toLocaleDateString("en-US", { weekday: "short" })}
+                    </span>
+                  </div>
+                )
+              })
+            ) : (
+              // Placeholder data
+              Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="flex flex-col items-center gap-2 w-1/8">
+                  <div className="relative w-full">
+                    <motion.div
+                      className="w-8 bg-rose-400 rounded-t-lg mx-auto"
+                      style={{ height: `${Math.random() * 50 + 30}%` }}
+                      initial={{ height: 0 }}
+                      animate={{ height: `${Math.random() * 50 + 30}%` }}
+                      transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
+                    />
+                    <motion.div
+                      className="w-8 bg-rose-200 rounded-t-lg mx-auto absolute bottom-0 left-0 right-0"
+                      style={{ height: `${Math.random() * 20 + 10}%` }}
+                      initial={{ height: 0 }}
+                      animate={{ height: `${Math.random() * 20 + 10}%` }}
+                      transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", {
+                      weekday: "short",
+                    })}
+                  </span>
                 </div>
-                <span className="text-xs text-gray-500">
-                  {new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", {
-                    weekday: "short",
-                  })}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* Chart grid lines */}
