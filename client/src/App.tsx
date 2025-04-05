@@ -6,6 +6,8 @@ import VoiceAnalysis from './pages/VoiceAnalysis';
 import SignLanguage from './pages/SignLanguage';
 import AICoaching from './pages/AICoaching';
 import Progress from './pages/Progress';
+import DoctorConnect from './pages/DoctorConnect';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -17,9 +19,14 @@ function App() {
           <Route path="sign-language" element={<SignLanguage />} />
           <Route path="ai-coaching" element={<AICoaching />} />
           <Route path="progress" element={<Progress />} />
+          <Route path="dr-Connect" element={<DoctorConnect/>} />
+          <Route path="settings" element={<Settings/>} />
+
         </Route>
       </Routes>
     </BrowserRouter>
+
+    // <DoctorConnect/>
   );
 }
 
