@@ -5,18 +5,26 @@ import mediapipe as mp
 import numpy as np
 import pyttsx3
 import kagglehub
-# Download latest version
-path = kagglehub.dataset_download("datamunge/sign-language-mnist")
+import tensorflow as tf
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import threading
+import time
 
-print("Path to dataset files:", path)
-from tensorflow.keras.models import load_model
+app = Flask(__name__)
+CORS(app)
 
 # Initialize text-to-speech engine
 engine = pyttsx3.init()
 engine.setProperty('rate', 150)
 
 # Load pre-trained sign language model (for static hand signs A-Z)
-model = load_model("asl_model.h5")
+try:
+    model = tf.keras.models.load_model("asl_model.h5")
+except:
+    print("Warning: No trained model found. Using placeholder predictions.")
+    model = None
+
 classes = [chr(i) for i in range(65, 91)]  # A-Z
 
 # MediaPipe hands setup
@@ -27,53 +35,79 @@ hands = mp_hands.Hands(static_image_mode=False,
                         min_detection_confidence=0.7,
                         min_tracking_confidence=0.7)
 
-# Initialize webcam
-cap = cv2.VideoCapture(0)
+# Global variables for camera
+camera_active = False
+cap = None
+current_prediction = ""
 
-sentence = ""
-last_pred = ""
+def process_frame(frame):
+    global current_prediction
+    
+    # Convert the BGR image to RGB
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    
+    # Process the frame with MediaPipe Hands
+    results = hands.process(rgb_frame)
+    
+    # Draw hand landmarks
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(
+                frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            
+            # Extract hand landmarks
+            landmarks = []
+            for landmark in hand_landmarks.landmark:
+                landmarks.extend([landmark.x, landmark.y, landmark.z])
+            
+            # Make prediction if model is available
+            if model is not None:
+                landmarks = np.array(landmarks).reshape(1, -1)
+                prediction = model.predict(landmarks)
+                current_prediction = chr(65 + np.argmax(prediction))  # Convert to letter (A-Z)
+            else:
+                # Placeholder prediction
+                current_prediction = "A"
+    
+    return frame
 
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
+def camera_thread():
+    global camera_active, cap, current_prediction
+    
+    cap = cv2.VideoCapture(0)
+    while camera_active:
+        ret, frame = cap.read()
+        if ret:
+            frame = process_frame(frame)
+            # You can add code here to save or stream the frame
+        else:
+            break
+        time.sleep(0.1)  # Control frame rate
+    
+    cap.release()
+    current_prediction = ""
 
-    frame = cv2.flip(frame, 1)
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    result = hands.process(rgb)
+@app.route('/api/start-camera', methods=['POST'])
+def start_camera():
+    global camera_active
+    if not camera_active:
+        camera_active = True
+        thread = threading.Thread(target=camera_thread)
+        thread.start()
+        return jsonify({'status': 'camera_started'})
+    return jsonify({'status': 'camera_already_running'})
 
-    if result.multi_hand_landmarks:
-        for hand_landmarks in result.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+@app.route('/api/stop-camera', methods=['POST'])
+def stop_camera():
+    global camera_active
+    if camera_active:
+        camera_active = False
+        return jsonify({'status': 'camera_stopped'})
+    return jsonify({'status': 'camera_not_running'})
 
-            coords = []
-            for lm in hand_landmarks.landmark:
-                coords.append(lm.x)
-                coords.append(lm.y)
+@app.route('/api/get-prediction', methods=['GET'])
+def get_prediction():
+    return jsonify({'prediction': current_prediction})
 
-            coords = np.array(coords).reshape(1, -1)
-            pred = model.predict(coords)
-            pred_class = np.argmax(pred)
-            letter = classes[pred_class]
-
-            if letter != last_pred:
-                sentence += letter
-                last_pred = letter
-
-    # Display output
-    cv2.putText(frame, f"Text: {sentence}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-    cv2.imshow("Sign Language Translator", frame)
-
-    key = cv2.waitKey(1) & 0xFF
-    if key == ord('q'):
-        break
-    elif key == ord('c'):
-        # Clear the sentence
-        sentence = ""
-    elif key == ord('s'):
-        # Speak the sentence
-        engine.say(sentence)
-        engine.runAndWait()
-
-cap.release()
-cv2.destroyAllWindows()
+if __name__ == '__main__':
+    app.run(debug=True, port=5001)  # Different port from main.py

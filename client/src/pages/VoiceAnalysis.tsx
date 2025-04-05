@@ -1,170 +1,186 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, Volume2, AlertCircle, Pause, Activity } from 'lucide-react';
+import { Mic, Download, AlertCircle } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import ProgressBar from '../components/ui/ProgressBar';
+import { startVoiceRecording, stopVoiceRecording, analyzeVoice, downloadReport } from '../services/api';
 
 const VoiceAnalysis = () => {
   const [isRecording, setIsRecording] = useState(false);
-  const [volume, setVolume] = useState(0);
-  const [pitch, setPitch] = useState(0);
-  const [clarity, setClarity] = useState(0);
-  const [pace, setPace] = useState(0);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState({
+    volume: 0,
+    pitch: 0,
+    clarity: 0,
+    pace: 0
+  });
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     return () => {
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
       }
     };
-  }, []);
+  }, [isRecording]);
 
-  const startRecording = async () => {
+  const handleStartRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
-      
-      audioContextRef.current = new AudioContext();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      source.connect(analyserRef.current);
-      
-      analyserRef.current.fftSize = 2048;
-      const bufferLength = analyserRef.current.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      
-      const updateMetrics = () => {
-        if (!analyserRef.current || !isRecording) return;
-        
-        analyserRef.current.getByteFrequencyData(dataArray);
-        const average = dataArray.reduce((a, b) => a + b) / bufferLength;
-        
-        setVolume(Math.min(average / 128 * 100, 100));
-        setPitch(Math.min((average / 128 * 100 + Math.random() * 20), 100));
-        setClarity(Math.min((average / 128 * 100 + Math.random() * 10), 100));
-        setPace(Math.min((average / 128 * 100 + Math.random() * 15), 100));
-        
-        requestAnimationFrame(updateMetrics);
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
-      
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        try {
+          await startVoiceRecording();
+          const result = await analyzeVoice(audioBlob);
+          setAnalysisResult(result);
+          setMetrics({
+            volume: result.volume || 0,
+            pitch: result.pitch || 0,
+            clarity: result.clarity || 0,
+            pace: result.pace || 0
+          });
+        } catch (error) {
+          console.error('Error analyzing voice:', error);
+          setError('Failed to analyze voice recording');
+        }
+      };
+
+      mediaRecorder.start();
       setIsRecording(true);
-      updateMetrics();
+      setError(null);
     } catch (error) {
-      console.error('Error accessing microphone:', error);
+      console.error('Error starting recording:', error);
+      setError('Failed to access microphone. Please check your permissions.');
     }
   };
 
-  const stopRecording = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+  const handleStopRecording = async () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      try {
+        await stopVoiceRecording();
+      } catch (error) {
+        console.error('Error stopping recording:', error);
+        setError('Failed to stop recording');
+      }
     }
-    setIsRecording(false);
   };
 
-  const tips = [
-    { text: 'Speak clearly and at a steady pace', icon: Activity },
-    { text: 'Maintain consistent volume', icon: Volume2 },
-    { text: 'Take natural pauses between phrases', icon: Pause },
-  ];
+  const handleDownloadReport = async () => {
+    try {
+      const reportBlob = await downloadReport();
+      const url = window.URL.createObjectURL(reportBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'voice-analysis-report.pdf';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      setError('Failed to download report');
+    }
+  };
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Live Voice Analysis</h1>
-        <Button
-          variant={isRecording ? 'danger' : 'primary'}
-          icon={<Mic className="w-5 h-5" />}
-          onClick={isRecording ? stopRecording : startRecording}
-        >
-          {isRecording ? 'Stop Recording' : 'Start Recording'}
-        </Button>
-      </div>
-
-      <Card>
-        <div className="relative h-48 bg-gray-50 rounded-lg flex items-center justify-center mb-6 overflow-hidden">
-          {isRecording ? (
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
+        <h1 className="text-3xl font-bold text-gray-900">Voice Analysis</h1>
+        <div className="flex gap-4">
+          <Button
+            variant={isRecording ? 'danger' : 'primary'}
+            icon={<Mic className="w-5 h-5" />}
+            onClick={isRecording ? handleStopRecording : handleStartRecording}
+          >
+            {isRecording ? 'Stop Recording' : 'Start Recording'}
+          </Button>
+          {analysisResult && (
+            <Button
+              variant="secondary"
+              icon={<Download className="w-5 h-5" />}
+              onClick={handleDownloadReport}
             >
-              <div className="relative">
-                <motion.div
-                  className="absolute inset-0 bg-indigo-500 rounded-full opacity-20"
-                  animate={{
-                    scale: [1, 1.5, 1],
-                    opacity: [0.2, 0.1, 0.2],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
-                <Mic className="w-12 h-12 text-indigo-600 relative z-10" />
-              </div>
-            </motion.div>
-          ) : (
-            <Volume2 className="w-12 h-12 text-gray-400" />
+              Download Report
+            </Button>
           )}
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="space-y-2">
-            <ProgressBar
-              label="Volume"
-              value={volume}
-              color={volume > 80 ? 'red' : volume > 60 ? 'green' : 'indigo'}
-            />
-          </div>
-          <div className="space-y-2">
-            <ProgressBar
-              label="Pitch"
-              value={pitch}
-              color={pitch > 80 ? 'red' : pitch > 60 ? 'green' : 'indigo'}
-            />
-          </div>
-          <div className="space-y-2">
-            <ProgressBar
-              label="Clarity"
-              value={clarity}
-              color={clarity > 80 ? 'green' : clarity > 60 ? 'indigo' : 'red'}
-            />
-          </div>
-          <div className="space-y-2">
-            <ProgressBar
-              label="Pace"
-              value={pace}
-              color={pace > 80 ? 'red' : pace > 60 ? 'green' : 'indigo'}
-            />
-          </div>
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
+          <AlertCircle className="w-5 h-5 text-red-500" />
+          <p className="text-red-700">{error}</p>
         </div>
-      </Card>
+      )}
 
-      <Card>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Real-time Tips</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {tips.map((tip, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-indigo-50 rounded-lg p-4 flex items-center gap-3"
-            >
-              <tip.icon className="w-5 h-5 text-indigo-600" />
-              <p className="text-indigo-700 font-medium">{tip.text}</p>
-            </motion.div>
-          ))}
-        </div>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Volume</h3>
+          <div className="w-full h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-full bg-indigo-600 rounded-full"
+              style={{ width: `${metrics.volume}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-500 mt-2">{metrics.volume}%</p>
+        </Card>
+
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Pitch</h3>
+          <div className="w-full h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-full bg-indigo-600 rounded-full"
+              style={{ width: `${metrics.pitch}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-500 mt-2">{metrics.pitch}%</p>
+        </Card>
+
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Clarity</h3>
+          <div className="w-full h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-full bg-indigo-600 rounded-full"
+              style={{ width: `${metrics.clarity}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-500 mt-2">{metrics.clarity}%</p>
+        </Card>
+
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Pace</h3>
+          <div className="w-full h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-full bg-indigo-600 rounded-full"
+              style={{ width: `${metrics.pace}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-500 mt-2">{metrics.pace}%</p>
+        </Card>
+      </div>
+
+      {analysisResult && (
+        <Card>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Analysis Results</h2>
+          <div className="prose max-w-none">
+            <p className="text-gray-600">{analysisResult}</p>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
