@@ -48,7 +48,7 @@ USE_CASE_SUGGESTIONS = {
 }
 def check_initial_silence(y, sr, threshold=0.01, duration_sec=5):
     check_samples = int(sr * duration_sec)
-    energy = np.mean(np.abs(y[:check_samples]))
+    energy = np.mean(np.abs(y[:cck_samples]))
     if energy < threshold:
         print("⚠️ You remained silent in the first few seconds. Try starting promptly.")
 
@@ -151,9 +151,7 @@ def analyze_voice(y, rate):
         pass
 
     return (confidence_level, confidence_score, suggestions, 
-            pitch_mean, pitch_std, energy_mean, energy_std, pause_count, filler_count)
-
-def generate_spectrogram(y, sr, output_path="spectrogram.png"):
+            pitch_mean, pitch_std, energy_mean, energy_std, pauunt, fillerpasssr, output_path="spectrogram.png"):
     import librosa.display
 
     plt.figure(figsize=(12, 6))
@@ -210,21 +208,23 @@ def print_report(level, score, suggestions, pitch_mean, pitch_std, energy_mean, 
     report += f"Energy Mean: {energy_mean:.5f}, Energy STD: {energy_std:.5f}\n"
     report += f"Pauses Detected: {pause_count}, Fillers Estimated: {filler_count}\n"
     if suggestions:
-        report += "\nSuggestions to Improve:\n"
+        report += "\nSuggestions         save_choice = input("Do you want to save the report as PDF? (y/n): ")
+    if save_choice.lower() == 'y':
+to Improve:\n"
         for s in suggestions:
-            report += f"- {s}\n"
+                report += f"- {s}\n"
     else:
-        report += "✅ Your voice sounds confident and fluent!\n"
-    print(report)
+        rep    ort += "✅ Your voice sounds confident and fluent!\n"
+        print(report)
     return report
 
 def save_report(report_str, confidence_score, pitch_mean, energy_mean, pause_count, filler_count, y, sr):
     save_choice = input("Do you want to save the report as PDF? (y/n): ")
     if save_choice.lower() == 'y':
-        reports_dir = os.path.join(os.getcwd(), "reports")
+        reports_dir = os.path.join(os.getcwd    (), "reports")
         os.makedirs(reports_dir, exist_ok=True)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strft    ime("%Y%m%d_%H%M%S")
         filename = f"vocaledge-ai_report_{timestamp}.pdf"
         filepath = os.path.join(reports_dir, filename)
 
@@ -236,7 +236,7 @@ def save_report(report_str, confidence_score, pitch_mean, energy_mean, pause_cou
             x_margin, y_margin = 50, 800
 
             c.setFont("Helvetica-Bold", 18)
-            c.drawString(x_margin, y_margin, "🧠 VocalEdge AI - Voice Health Report")
+            c.dr    awString(x_margin, y_margin, "🧠 VocalEdge AI - Voice Health Report")
             c.setFont("Helvetica", 12)
             y_margin -= 30
 
