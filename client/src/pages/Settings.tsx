@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+"use client"
+
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import {
-  Settings as SettingsIcon,
+  Settings,
   User,
   Bell,
   Lock,
@@ -10,264 +12,248 @@ import {
   Volume2,
   Moon,
   Sun,
-  Globe,
   FileText,
-  BarChart,
   Calendar,
   CheckCircle,
-  AlertCircle,
   ChevronRight,
-  LogOut,
   Mic2,
   Languages,
   Brain,
-  LineChart,
-  Stethoscope,
-  Palette,
   VolumeX,
   Volume1,
-  Volume2 as VolumeHigh,
   Headphones,
   MessageSquare,
   Share2,
-  Shield,
   Eye,
-  EyeOff,
   Trash2,
   HelpCircle,
-  RefreshCw
-} from 'lucide-react';
+  RefreshCw,
+} from "lucide-react"
 
 interface HistoryEntry {
-  date: string;
-  type: 'practice' | 'consultation' | 'achievement' | 'voice' | 'sign';
-  title: string;
-  description: string;
-  improvement?: number;
-  duration?: string;
-  score?: number;
+  date: string
+  type: "practice" | "consultation" | "achievement" | "voice" | "sign"
+  title: string
+  description: string
+  improvement?: number
+  duration?: string
+  score?: number
 }
 
 interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  icon: JSX.Element;
-  progress?: number;
+  id: string
+  title: string
+  description: string
+  date: string
+  icon: JSX.Element
+  progress?: number
 }
 
 interface VoicePreference {
-  id: string;
-  name: string;
-  description: string;
-  icon: JSX.Element;
-  active: boolean;
+  id: string
+  name: string
+  description: string
+  icon: JSX.Element
+  active: boolean
 }
 
 interface AccessibilityOption {
-  id: string;
-  title: string;
-  description: string;
-  enabled: boolean;
-  icon: JSX.Element;
+  id: string
+  title: string
+  description: string
+  enabled: boolean
+  icon: JSX.Element
 }
 
 const historyData: HistoryEntry[] = [
   {
-    date: '2024-03-15',
-    type: 'practice',
-    title: 'Sign Language Practice',
-    description: 'Completed 30 minutes of basic sign language training',
+    date: "2024-03-15",
+    type: "practice",
+    title: "Sign Language Practice",
+    description: "Completed 30 minutes of basic sign language training",
     improvement: 15,
-    duration: '30 mins',
-    score: 85
+    duration: "30 mins",
+    score: 85,
   },
   {
-    date: '2024-03-14',
-    type: 'consultation',
-    title: 'Voice Therapy Session',
-    description: 'Session with Dr. Sarah Wilson - Voice improvement techniques discussed',
-    duration: '45 mins'
+    date: "2024-03-14",
+    type: "consultation",
+    title: "Voice Therapy Session",
+    description: "Session with Dr. Sarah Wilson - Voice improvement techniques discussed",
+    duration: "45 mins",
   },
   {
-    date: '2024-03-13',
-    type: 'achievement',
-    title: 'Weekly Goal Achieved',
-    description: 'Completed all weekly practice sessions',
-    improvement: 25
+    date: "2024-03-13",
+    type: "achievement",
+    title: "Weekly Goal Achieved",
+    description: "Completed all weekly practice sessions",
+    improvement: 25,
   },
   {
-    date: '2024-03-12',
-    type: 'voice',
-    title: 'Voice Training',
-    description: 'Pitch control and breathing exercises',
+    date: "2024-03-12",
+    type: "voice",
+    title: "Voice Training",
+    description: "Pitch control and breathing exercises",
     improvement: 20,
-    duration: '25 mins',
-    score: 92
+    duration: "25 mins",
+    score: 92,
   },
   {
-    date: '2024-03-11',
-    type: 'sign',
-    title: 'ASL Basics',
-    description: 'Learned 15 new signs for common phrases',
+    date: "2024-03-11",
+    type: "sign",
+    title: "ASL Basics",
+    description: "Learned 15 new signs for common phrases",
     improvement: 18,
-    duration: '40 mins',
-    score: 88
-  }
-];
+    duration: "40 mins",
+    score: 88,
+  },
+]
 
 const achievements: Achievement[] = [
   {
-    id: '1',
-    title: 'First Step',
-    description: 'Completed first voice training session',
-    date: '2024-03-10',
+    id: "1",
+    title: "First Step",
+    description: "Completed first voice training session",
+    date: "2024-03-10",
     icon: <CheckCircle className="w-6 h-6 text-green-500" />,
-    progress: 100
+    progress: 100,
   },
   {
-    id: '2',
-    title: 'Consistent Learner',
-    description: '7 days streak of practice',
-    date: '2024-03-15',
+    id: "2",
+    title: "Consistent Learner",
+    description: "7 days streak of practice",
+    date: "2024-03-15",
     icon: <Calendar className="w-6 h-6 text-indigo-500" />,
-    progress: 70
+    progress: 70,
   },
   {
-    id: '3',
-    title: 'Voice Master',
-    description: 'Achieved 90% accuracy in pitch control',
-    date: '2024-03-12',
+    id: "3",
+    title: "Voice Master",
+    description: "Achieved 90% accuracy in pitch control",
+    date: "2024-03-12",
     icon: <Volume2 className="w-6 h-6 text-purple-500" />,
-    progress: 90
+    progress: 90,
   },
   {
-    id: '4',
-    title: 'Sign Language Pioneer',
-    description: 'Learned 50 basic signs',
-    date: '2024-03-14',
+    id: "4",
+    title: "Sign Language Pioneer",
+    description: "Learned 50 basic signs",
+    date: "2024-03-14",
     icon: <Languages className="w-6 h-6 text-blue-500" />,
-    progress: 85
-  }
-];
+    progress: 85,
+  },
+]
 
 const voicePreferences: VoicePreference[] = [
   {
-    id: 'voice-1',
-    name: 'Sarah',
-    description: 'Friendly female voice with American accent',
+    id: "voice-1",
+    name: "Sarah",
+    description: "Friendly female voice with American accent",
     icon: <Volume2 className="w-6 h-6 text-indigo-600" />,
-    active: true
+    active: true,
   },
   {
-    id: 'voice-2',
-    name: 'James',
-    description: 'Professional male voice with British accent',
+    id: "voice-2",
+    name: "James",
+    description: "Professional male voice with British accent",
     icon: <Volume1 className="w-6 h-6 text-purple-600" />,
-    active: false
+    active: false,
   },
   {
-    id: 'voice-3',
-    name: 'AI Assistant',
-    description: 'Clear and natural AI-generated voice',
+    id: "voice-3",
+    name: "AI Assistant",
+    description: "Clear and natural AI-generated voice",
     icon: <Brain className="w-6 h-6 text-blue-600" />,
-    active: false
-  }
-];
+    active: false,
+  },
+]
 
 const accessibilityOptions: AccessibilityOption[] = [
   {
-    id: 'high-contrast',
-    title: 'High Contrast Mode',
-    description: 'Enhance visual contrast for better readability',
+    id: "high-contrast",
+    title: "High Contrast Mode",
+    description: "Enhance visual contrast for better readability",
     enabled: false,
-    icon: <Eye className="w-6 h-6" />
+    icon: <Eye className="w-6 h-6" />,
   },
   {
-    id: 'screen-reader',
-    title: 'Screen Reader Support',
-    description: 'Enable compatibility with screen readers',
+    id: "screen-reader",
+    title: "Screen Reader Support",
+    description: "Enable compatibility with screen readers",
     enabled: true,
-    icon: <Headphones className="w-6 h-6" />
+    icon: <Headphones className="w-6 h-6" />,
   },
   {
-    id: 'motion-reduce',
-    title: 'Reduced Motion',
-    description: 'Minimize animations and transitions',
+    id: "motion-reduce",
+    title: "Reduced Motion",
+    description: "Minimize animations and transitions",
     enabled: false,
-    icon: <RefreshCw className="w-6 h-6" />
+    icon: <RefreshCw className="w-6 h-6" />,
   },
   {
-    id: 'caption',
-    title: 'Auto-Captions',
-    description: 'Show captions for all audio content',
+    id: "caption",
+    title: "Auto-Captions",
+    description: "Show captions for all audio content",
     enabled: true,
-    icon: <MessageSquare className="w-6 h-6" />
-  }
-];
+    icon: <MessageSquare className="w-6 h-6" />,
+  },
+]
 
-const Settings = () => {
-  const [activeTab, setActiveTab] = useState('general');
-  const [theme, setTheme] = useState('light');
-  const [language, setLanguage] = useState('english');
-  const [notifications, setNotifications] = useState(true);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [exportProgress, setExportProgress] = useState(0);
-  const [selectedVoice, setSelectedVoice] = useState('voice-1');
-  const [voiceVolume, setVoiceVolume] = useState(75);
-  const [accessibilitySettings, setAccessibilitySettings] = useState(accessibilityOptions);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState("general")
+  const [theme, setTheme] = useState("light")
+  const [language, setLanguage] = useState("english")
+  const [notifications, setNotifications] = useState(true)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportProgress, setExportProgress] = useState(0)
+  const [selectedVoice, setSelectedVoice] = useState("voice-1")
+  const [voiceVolume, setVoiceVolume] = useState(75)
+  const [accessibilitySettings, setAccessibilitySettings] = useState(accessibilityOptions)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const handleExportData = () => {
-    setShowExportModal(true);
-    let progress = 0;
+    setShowExportModal(true)
+    let progress = 0
     const interval = setInterval(() => {
-      progress += 20;
-      setExportProgress(progress);
+      progress += 20
+      setExportProgress(progress)
       if (progress >= 100) {
-        clearInterval(interval);
+        clearInterval(interval)
         setTimeout(() => {
-          setShowExportModal(false);
-          setExportProgress(0);
-        }, 1000);
+          setShowExportModal(false)
+          setExportProgress(0)
+        }, 1000)
       }
-    }, 500);
-  };
+    }, 500)
+  }
 
   const handleAccessibilityToggle = (id: string) => {
-    setAccessibilitySettings(prev =>
-      prev.map(option =>
-        option.id === id ? { ...option, enabled: !option.enabled } : option
-      )
-    );
-  };
+    setAccessibilitySettings((prev) =>
+      prev.map((option) => (option.id === id ? { ...option, enabled: !option.enabled } : option)),
+    )
+  }
 
   const handleDeleteAccount = () => {
-    setShowDeleteConfirm(true);
-  };
+    setShowDeleteConfirm(true)
+  }
 
   const tabVariants = {
     hidden: { opacity: 0, x: -20 },
-    visible: { opacity: 1, x: 0 }
-  };
+    visible: { opacity: 1, x: 0 },
+  }
 
   const progressBarVariants = {
     hidden: { width: 0 },
     visible: (progress: number) => ({
       width: `${progress}%`,
-      transition: { duration: 0.5, ease: 'easeOut' }
-    })
-  };
+      transition: { duration: 0.5, ease: "easeOut" },
+    }),
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-8">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-6xl mx-auto"
-      >
-        <div className="flex items-center justify-between mb-8">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
             Settings & Preferences
           </h1>
@@ -299,15 +285,15 @@ const Settings = () => {
             <div className="bg-white rounded-2xl shadow-xl p-4">
               <nav className="space-y-2">
                 {[
-                  { id: 'general', icon: SettingsIcon, label: 'General' },
-                  { id: 'profile', icon: User, label: 'Profile' },
-                  { id: 'notifications', icon: Bell, label: 'Notifications' },
-                  { id: 'privacy', icon: Lock, label: 'Privacy' },
-                  { id: 'history', icon: History, label: 'History' },
-                  { id: 'medical', icon: FileText, label: 'Medical Records' },
-                  { id: 'voice', icon: Mic2, label: 'Voice Settings' },
-                  { id: 'accessibility', icon: Eye, label: 'Accessibility' },
-                  { id: 'help', icon: HelpCircle, label: 'Help & Support' }
+                  { id: "general", icon: Settings, label: "General" },
+                  { id: "profile", icon: User, label: "Profile" },
+                  { id: "notifications", icon: Bell, label: "Notifications" },
+                  { id: "privacy", icon: Lock, label: "Privacy" },
+                  { id: "history", icon: History, label: "History" },
+                  { id: "medical", icon: FileText, label: "Medical Records" },
+                  { id: "voice", icon: Mic2, label: "Voice Settings" },
+                  { id: "accessibility", icon: Eye, label: "Accessibility" },
+                  { id: "help", icon: HelpCircle, label: "Help & Support" },
                 ].map((item) => (
                   <motion.button
                     key={item.id}
@@ -315,9 +301,7 @@ const Settings = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setActiveTab(item.id)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                      activeTab === item.id
-                        ? 'bg-indigo-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                      activeTab === item.id ? "bg-indigo-600 text-white" : "text-gray-600 hover:bg-gray-100"
                     }`}
                   >
                     <item.icon className="w-5 h-5" />
@@ -340,10 +324,10 @@ const Settings = () => {
                 transition={{ duration: 0.2 }}
                 className="bg-white rounded-2xl shadow-xl p-6"
               >
-                {activeTab === 'general' && (
+                {activeTab === "general" && (
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">General Settings</h2>
-                    
+
                     {/* Theme Selection */}
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-gray-900">Theme</h3>
@@ -351,11 +335,9 @@ const Settings = () => {
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => setTheme('light')}
+                          onClick={() => setTheme("light")}
                           className={`flex-1 p-4 rounded-xl border ${
-                            theme === 'light'
-                              ? 'border-indigo-600 bg-indigo-50'
-                              : 'border-gray-200'
+                            theme === "light" ? "border-indigo-600 bg-indigo-50" : "border-gray-200"
                           }`}
                         >
                           <Sun className="w-6 h-6 mx-auto mb-2" />
@@ -364,11 +346,9 @@ const Settings = () => {
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => setTheme('dark')}
+                          onClick={() => setTheme("dark")}
                           className={`flex-1 p-4 rounded-xl border ${
-                            theme === 'dark'
-                              ? 'border-indigo-600 bg-indigo-50'
-                              : 'border-gray-200'
+                            theme === "dark" ? "border-indigo-600 bg-indigo-50" : "border-gray-200"
                           }`}
                         >
                           <Moon className="w-6 h-6 mx-auto mb-2" />
@@ -400,23 +380,35 @@ const Settings = () => {
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-gray-900">Color Theme</h3>
                       <div className="grid grid-cols-4 gap-4">
-                        {['indigo', 'purple', 'blue', 'green'].map((color) => (
-                          <motion.button
-                            key={color}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className={`w-full h-12 rounded-lg bg-${color}-500`}
-                          />
-                        ))}
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="w-full h-12 rounded-lg bg-indigo-500"
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="w-full h-12 rounded-lg bg-purple-500"
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="w-full h-12 rounded-lg bg-pink-500"
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="w-full h-12 rounded-lg bg-rose-500"
+                        />
                       </div>
                     </div>
                   </div>
                 )}
 
-                {activeTab === 'voice' && (
+                {activeTab === "voice" && (
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Voice Settings</h2>
-                    
+
                     {/* Voice Selection */}
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-gray-900">AI Voice Assistant</h3>
@@ -426,9 +418,7 @@ const Settings = () => {
                             key={voice.id}
                             whileHover={{ scale: 1.02 }}
                             className={`p-4 rounded-xl border ${
-                              selectedVoice === voice.id
-                                ? 'border-indigo-600 bg-indigo-50'
-                                : 'border-gray-200'
+                              selectedVoice === voice.id ? "border-indigo-600 bg-indigo-50" : "border-gray-200"
                             } cursor-pointer`}
                             onClick={() => setSelectedVoice(voice.id)}
                           >
@@ -454,27 +444,23 @@ const Settings = () => {
                           min="0"
                           max="100"
                           value={voiceVolume}
-                          onChange={(e) => setVoiceVolume(parseInt(e.target.value))}
+                          onChange={(e) => setVoiceVolume(Number.parseInt(e.target.value))}
                           className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                         />
-                        <VolumeHigh className="w-6 h-6 text-indigo-600" />
+                        <Volume2 className="w-6 h-6 text-indigo-600" />
                       </div>
                       <p className="text-sm text-gray-600 text-center">{voiceVolume}%</p>
                     </div>
                   </div>
                 )}
 
-                {activeTab === 'accessibility' && (
+                {activeTab === "accessibility" && (
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Accessibility Settings</h2>
-                    
+
                     <div className="space-y-4">
                       {accessibilitySettings.map((option) => (
-                        <motion.div
-                          key={option.id}
-                          whileHover={{ scale: 1.02 }}
-                          className="p-4 bg-gray-50 rounded-xl"
-                        >
+                        <motion.div key={option.id} whileHover={{ scale: 1.02 }} className="p-4 bg-gray-50 rounded-xl">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               {option.icon}
@@ -499,47 +485,32 @@ const Settings = () => {
                   </div>
                 )}
 
-                {activeTab === 'help' && (
+                {activeTab === "help" && (
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Help & Support</h2>
-                    
+
                     <div className="space-y-4">
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        className="p-4 bg-blue-50 rounded-xl"
-                      >
+                      <motion.div whileHover={{ scale: 1.02 }} className="p-4 bg-blue-50 rounded-xl">
                         <h3 className="font-semibold text-gray-900 mb-2">Documentation</h3>
-                        <p className="text-sm text-gray-600 mb-4">
-                          Learn how to use all features of VocalEdge AI
-                        </p>
+                        <p className="text-sm text-gray-600 mb-4">Learn how to use all features of VocalEdge AI</p>
                         <button className="text-blue-600 font-medium flex items-center gap-2">
                           View Documentation
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       </motion.div>
 
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        className="p-4 bg-purple-50 rounded-xl"
-                      >
+                      <motion.div whileHover={{ scale: 1.02 }} className="p-4 bg-purple-50 rounded-xl">
                         <h3 className="font-semibold text-gray-900 mb-2">Video Tutorials</h3>
-                        <p className="text-sm text-gray-600 mb-4">
-                          Watch step-by-step guides for better understanding
-                        </p>
+                        <p className="text-sm text-gray-600 mb-4">Watch step-by-step guides for better understanding</p>
                         <button className="text-purple-600 font-medium flex items-center gap-2">
                           Watch Tutorials
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       </motion.div>
 
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        className="p-4 bg-green-50 rounded-xl"
-                      >
+                      <motion.div whileHover={{ scale: 1.02 }} className="p-4 bg-green-50 rounded-xl">
                         <h3 className="font-semibold text-gray-900 mb-2">Contact Support</h3>
-                        <p className="text-sm text-gray-600 mb-4">
-                          Get help from our support team
-                        </p>
+                        <p className="text-sm text-gray-600 mb-4">Get help from our support team</p>
                         <button className="text-green-600 font-medium flex items-center gap-2">
                           Contact Us
                           <ChevronRight className="w-4 h-4" />
@@ -549,22 +520,18 @@ const Settings = () => {
                   </div>
                 )}
 
-                {activeTab === 'profile' && (
+                {activeTab === "profile" && (
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Profile Settings</h2>
                     <div className="flex items-center gap-4 mb-6">
                       <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center">
                         <User className="w-10 h-10 text-indigo-600" />
                       </div>
-                      <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg">
-                        Change Photo
-                      </button>
+                      <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg">Change Photo</button>
                     </div>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Full Name
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                         <input
                           type="text"
                           className="w-full p-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -572,9 +539,7 @@ const Settings = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Email
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                         <input
                           type="email"
                           className="w-full p-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -582,9 +547,7 @@ const Settings = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Phone Number
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                         <input
                           type="tel"
                           className="w-full p-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -592,9 +555,7 @@ const Settings = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Date of Birth
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
                         <input
                           type="date"
                           className="w-full p-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -604,7 +565,7 @@ const Settings = () => {
                   </div>
                 )}
 
-                {activeTab === 'notifications' && (
+                {activeTab === "notifications" && (
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Notification Preferences</h2>
                     <div className="space-y-4">
@@ -657,7 +618,7 @@ const Settings = () => {
                   </div>
                 )}
 
-                {activeTab === 'history' && (
+                {activeTab === "history" && (
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Activity History</h2>
                     <div className="space-y-4">
@@ -675,12 +636,8 @@ const Settings = () => {
                               <p className="text-sm text-gray-600">{entry.description}</p>
                               <div className="flex items-center gap-4 mt-2">
                                 <p className="text-xs text-gray-500">{entry.date}</p>
-                                {entry.duration && (
-                                  <p className="text-xs text-gray-500">Duration: {entry.duration}</p>
-                                )}
-                                {entry.score && (
-                                  <p className="text-xs text-green-600">Score: {entry.score}%</p>
-                                )}
+                                {entry.duration && <p className="text-xs text-gray-500">Duration: {entry.duration}</p>}
+                                {entry.score && <p className="text-xs text-green-600">Score: {entry.score}%</p>}
                               </div>
                             </div>
                             {entry.improvement && (
@@ -708,7 +665,7 @@ const Settings = () => {
                   </div>
                 )}
 
-                {activeTab === 'medical' && (
+                {activeTab === "medical" && (
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Medical Records</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -743,9 +700,7 @@ const Settings = () => {
                             className="p-4 bg-gray-50 rounded-xl"
                           >
                             <div className="flex items-center gap-4">
-                              <div className="bg-white p-2 rounded-lg">
-                                {achievement.icon}
-                              </div>
+                              <div className="bg-white p-2 rounded-lg">{achievement.icon}</div>
                               <div className="flex-1">
                                 <h4 className="font-semibold text-gray-900">{achievement.title}</h4>
                                 <p className="text-sm text-gray-600">{achievement.description}</p>
@@ -761,9 +716,7 @@ const Settings = () => {
                                         className="h-full bg-indigo-500"
                                       />
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      Progress: {achievement.progress}%
-                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">Progress: {achievement.progress}%</p>
                                   </div>
                                 )}
                               </div>
@@ -775,7 +728,7 @@ const Settings = () => {
                   </div>
                 )}
 
-                {activeTab === 'privacy' && (
+                {activeTab === "privacy" && (
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Privacy Settings</h2>
                     <div className="space-y-4">
@@ -842,9 +795,7 @@ const Settings = () => {
                     className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-600"
                   />
                 </div>
-                <div className="text-center text-sm text-gray-600">
-                  {exportProgress}% Complete
-                </div>
+                <div className="text-center text-sm text-gray-600">{exportProgress}% Complete</div>
               </div>
             </motion.div>
           </motion.div>
@@ -880,7 +831,7 @@ const Settings = () => {
                 <button
                   onClick={() => {
                     // Handle account deletion
-                    setShowDeleteConfirm(false);
+                    setShowDeleteConfirm(false)
                   }}
                   className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg"
                 >
@@ -892,7 +843,6 @@ const Settings = () => {
         )}
       </AnimatePresence>
     </div>
-  );
-};
+  )
+}
 
-export default Settings;
