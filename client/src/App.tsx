@@ -23,12 +23,9 @@ function App() {
           <Route path="progress" element={<Progress />} />
           <Route path="dr-Connect" element={<DoctorConnect/>} />
           <Route path="settings" element={<Settings/>} />
-
         </Route>
       </Routes>
     </BrowserRouter>
-
-    // <DoctorConnect/>
   );
 }
 

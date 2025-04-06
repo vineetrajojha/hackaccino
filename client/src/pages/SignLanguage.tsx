@@ -1,144 +1,245 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { Camera, Hand, AudioWaveform as Waveform, Stethoscope, MessageSquare, Brain } from "lucide-react";
+import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Camera, Video, Mic, Activity, Brain, Award } from 'lucide-react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import { HoverEffect } from '../components/ui/card-hover-effect';
 
-// Feature Card Component with TypeScript Props
-interface FeatureProps {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}
+const SignLanguage = () => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [confidence, setConfidence] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-const FeatureCard: React.FC<FeatureProps> = ({ icon: Icon, title, description }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20"
-  >
-    <Icon className="w-6 h-6 text-indigo-400 mb-2 " />
-    <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-    <p className="text-gray-300 text-sm">{description}</p>
-  </motion.div>
-);
+  const stats = [
+    { icon: Activity, label: 'Gesture Recognition', value: '92%', color: 'text-green-600' },
+    { icon: Brain, label: 'Translation Accuracy', value: '88%', color: 'text-blue-600' },
+    { icon: Award, label: 'Response Time', value: '0.3s', color: 'text-purple-600' },
+  ];
 
-const SignLanguage: React.FC = () => {
-  const [showFeatures, setShowFeatures] = useState(false);
+  const features = [
+    {
+      title: 'Real-time Translation',
+      description: 'Instantly convert sign language to text and speech.',
+      link: '/sign-language/translation',
+    },
+    {
+      title: 'Gesture Analysis',
+      description: 'Advanced AI analyzes hand movements and facial expressions.',
+      link: '/sign-language/analysis',
+    },
+    {
+      title: 'Learning Mode',
+      description: 'Practice and improve your sign language skills with feedback.',
+      link: '/sign-language/learning',
+    },
+  ];
 
-  const handleStartCamera = () => {
-    alert("Camera functionality not implemented yet.");
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+      }
+      setIsRecording(true);
+      setError(null);
+    } catch (err) {
+      setError('Failed to access camera. Please ensure you have granted camera permissions.');
+      console.error('Error accessing camera:', err);
+    }
   };
 
+  const stopRecording = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsRecording(false);
+    setIsAnalyzing(false);
+    setAnalysisResult(null);
+  };
+
+  const analyzeSigns = async () => {
+    setIsAnalyzing(true);
+    setError(null);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Simulated response
+      setAnalysisResult("Hello! How are you today?");
+      setConfidence(0.92);
+    } catch (err) {
+      setError('Failed to analyze signs. Please try again.');
+      console.error('Error analyzing signs:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-white to-pink-200 p-8 space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-800">
-          Sign Language Predictor
-        </h1>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-gradient-to-r from-indigo-800 to-purple-900 text-white px-6 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-indigo-500/30"
-          onClick={handleStartCamera}
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+      {/* Hero Section */}
+      <div className="px-4 py-12 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-4xl mx-auto"
         >
-          <Camera className="w-5 h-5" />
-          Start Camera
-        </motion.button>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-6">
+            Sign Language Translation
+          </h1>
+          <p className="text-xl text-gray-600 mb-8">
+            Break communication barriers with our AI-powered sign language translation system.
+          </p>
+        </motion.div>
       </div>
 
-      {/* Camera Feed & Features */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <motion.div
-          className="relative"
-          whileHover={{ scale: 1.02 }}
-          onMouseEnter={() => setShowFeatures(true)}
-          onMouseLeave={() => setShowFeatures(false)}
-        >
-          <div className="bg-gradient-to-br from-indigo-800 to-purple-800 rounded-xl p-6 backdrop-blur-lg border border-white/10">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <Camera className="w-6 h-6" />
-              Camera Feed
-            </h2>
-            <div
-              className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center relative overflow-hidden"
-              style={{
-                backgroundImage:
-                  "url('https://plus.unsplash.com/premium_photo-1715474788302-da2e32ade3ac?q=80&w=1742&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            >
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                <Camera className="w-12 h-12 text-white/50" />
-              </div>
-            </div>
-          </div>
-
-          {showFeatures && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-indigo-900 rounded-xl p-6 grid grid-cols-2 gap-4"
-            >
-              <FeatureCard icon={Brain} title="AI Sign Interpreter" description="Real-time sign language interpretation powered by AI." />
-              <FeatureCard icon={Waveform} title="Pitch Analysis" description="Advanced voice pitch analysis with detailed reports." />
-              <FeatureCard icon={Stethoscope} title="Medical Consultation" description="Connect with speech specialists for professional guidance." />
-              <FeatureCard icon={MessageSquare} title="Text Generation" description="Convert signs to natural language text in real-time." />
-            </motion.div>
-          )}
-        </motion.div>
-
-        {/* Predictions */}
-        <div className="bg-gradient-to-br from-indigo-800 to-purple-800 rounded-xl p-6 backdrop-blur-lg border border-white/10">
-          <h2 className="text-xl font-bold text-white mb-4">Predictions</h2>
-          <div className="space-y-4">
-            {["Hello", "Thank You", "Please"].map((prediction, index) => (
+      {/* Stats Section */}
+      <div className="px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto">
+          {stats.map((stat, index) => (
+            <Card key={stat.label} className='bg-black'>
               <motion.div
-                key={prediction}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="flex items-center gap-4 p-4 bg-white/5 rounded-lg backdrop-blur-sm border border-white/10"
+                className="flex items-center gap-4"
               >
-                <Hand className="w-6 h-6 text-indigo-400" />
-                <div className="flex-1">
-                  <p className="font-medium text-white">{prediction}</p>
-                  <div className="w-full h-2 bg-gray-800 rounded-full mt-2">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.random() * 100}%` }}
-                      transition={{ duration: 1 }}
-                      className="h-full bg-gradient-to-r from-indigo-800 to-purple-900 rounded-full"
-                    />
-                  </div>
+                <div className="p-3 bg-gradient-to-br from-purple-100 to-indigo-200 rounded-lg">
+                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-200">{stat.label}</p>
+                  <p className="text-2xl font-bold text-gray-400">{stat.value}</p>
                 </div>
               </motion.div>
-            ))}
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="px-4 py-8 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Video Feed Section */}
+            <Card className="bg-black p-6">
+              <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden mb-4">
+                {!isRecording ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Camera className="w-16 h-16 text-gray-400" />
+                  </div>
+                ) : (
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </div>
+              <div className="flex gap-4">
+                {!isRecording ? (
+                  <Button
+                    size="lg"
+                    icon={<Video className="w-5 h-5" />}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600"
+                    onClick={startRecording}
+                  >
+                    Start Recording
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      size="lg"
+                      icon={<Activity className="w-5 h-5" />}
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600"
+                      onClick={analyzeSigns}
+                      disabled={isAnalyzing}
+                    >
+                      {isAnalyzing ? 'Analyzing...' : 'Analyze Signs'}
+                    </Button>
+                    <Button
+                      size="lg"
+                      color="secondary"
+                      onClick={stopRecording}
+                    >
+                      Stop Recording
+                    </Button>
+                  </>
+                )}
+              </div>
+            </Card>
+
+            {/* Analysis Results Section */}
+            <Card className="bg-black p-6">
+              <h2 className="text-2xl font-semibold text-gray-200 mb-4">
+                Translation Results
+              </h2>
+              {error ? (
+                <div className="text-red-500 mb-4">{error}</div>
+              ) : analysisResult ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-gray-800 rounded-lg">
+                    <p className="text-gray-200">{analysisResult}</p>
+                  </div>
+                  {confidence && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div
+                          className="bg-purple-600 h-2 rounded-full"
+                          style={{ width: `${confidence * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-sm text-gray-400">
+                        {Math.round(confidence * 100)}% confidence
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-400">
+                  Start recording and analyzing to see translation results.
+                </div>
+              )}
+            </Card>
           </div>
         </div>
       </div>
 
-      {/* Voice Analysis */}
-      <div className="bg-indigo-800 rounded-xl p-6 backdrop-blur-lg border border-white/10">
-        <h2 className="text-xl font-bold text-white mb-4">Voice Analysis</h2>
-        <div className="aspect-[3/1] bg-black/20 rounded-lg p-4">
-          <div className="h-full bg-[#001100] rounded border border-green-500/30 relative overflow-hidden">
-            {Array.from({ length: 50 }).map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute bottom-0 left-0 w-1 bg-green-500"
-                style={{ left: `${(i / 50) * 100}%` }}
-                animate={{
-                  height: ["20%", "90%", "40%"],
-                }}
-                transition={{
-                  duration: 1,
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                }}
-              />
-            ))}
+      {/* Features Section */}
+      <div className="px-4 py-16 sm:px-6 lg:px-8 bg-gradient-to-br from-white via-purple-50 to-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Key Features
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Discover how our sign language translation system can help you communicate better.
+            </p>
           </div>
+
+          <HoverEffect items={features.map(feature => ({
+            ...feature,
+            icon: <Mic className="w-6 h-6" />,
+          }))} />
         </div>
       </div>
     </div>
