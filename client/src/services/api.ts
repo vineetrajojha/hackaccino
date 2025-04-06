@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:8000';
 const SIGN_LANGUAGE_API_URL = 'http://localhost:5001/api';
 
 export interface VoiceAnalysisResult {
@@ -21,18 +23,19 @@ export interface SignLanguageResult {
 // Voice Analysis API
 export const analyzeVoice = async (audioFile: File): Promise<VoiceAnalysisResult> => {
   const formData = new FormData();
-  formData.append('audio', audioFile);
+  formData.append('file', audioFile);
 
-  const response = await fetch(`${API_BASE_URL}/analyze-voice`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to analyze voice');
+  try {
+    const response = await axios.post(`${API_BASE_URL}/analyze-voice`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error analyzing voice:', error);
+    throw error;
   }
-
-  return response.json();
 };
 
 export const startVoiceRecording = async (): Promise<void> => {
