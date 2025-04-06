@@ -148,7 +148,7 @@ const signLanguageExamples: SignLanguageExample[] = [
   {
     word: "Hello",
     description: "Wave your open hand side to side",
-    imageUrl: "https://images.unsplash.com/photo-1596526131083-e8c633c948d2?w=800&auto=format&fit=crop&q=60",
+    imageUrl: "https://www.google.com/url?sa=i&url=https%3A%2F%2Fbabysignlanguage.com%2Fdictionary%2Fhello%2F&psig=AOvVaw1xFm_V_Ve3SGu8ufcrykWr&ust=1743985299253000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCLj7jdyRwowDFQAAAAAdAAAAABAJ",
     category: "Greetings",
   },
   {
