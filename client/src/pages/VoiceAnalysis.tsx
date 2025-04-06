@@ -1,573 +1,344 @@
-"use client"
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { Mic, Download, AlertCircle, MicOff } from 'lucide-react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import axios from 'axios';
 
-import { useState, useEffect, useRef } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import {
-  Mic,
-  Volume2,
-  AlertCircle,
-  Pause,
-  Activity,
-  AudioWaveformIcon as Waveform,
-  Gauge,
-  MessageSquare,
-  Loader,
-} from "lucide-react"
+const API_BASE_URL = 'http://localhost:8000';
 
-// API URL configuration - adjust this to match your Flask backend
-const API_URL = "http://localhost:5173/api"
-
-const VoiceAnalysis = () => {
-  const [isRecording, setIsRecording] = useState(false)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [volume, setVolume] = useState(0)
-  const [pitch, setPitch] = useState(0)
-  const [clarity, setClarity] = useState(0)
-  const [pace, setPace] = useState(0)
-  const [feedback, setFeedback] = useState("")
-  const [error, setError] = useState("")
-  const [analysisResult, setAnalysisResult] = useState(null)
-  const [performanceHistory, setPerformanceHistory] = useState([])
-  const audioContextRef = useRef(null)
-  const analyserRef = useRef(null)
-  const mediaStreamRef = useRef(null)
-  const animationRef = useRef(null)
-  const audioRecorderRef = useRef(null)
-  const audioChunksRef = useRef([])
-
-  // Load performance history from localStorage
-  useEffect(() => {
-    try {
-      const history = localStorage.getItem('voiceAnalysisHistory')
-      if (history) {
-        setPerformanceHistory(JSON.parse(history))
-      }
-    } catch (err) {
-      console.error("Failed to load performance history:", err)
-    }
-  }, [])
-
-  // Cleanup function
-  useEffect(() => {
-    return () => {
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop())
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close()
-      }
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
-      if (audioRecorderRef.current) {
-        audioRecorderRef.current.stop()
-      }
-    }
-  }, [])
-
-  // Live feedback generation
-  useEffect(() => {
-    if (isRecording && volume > 0) {
-      const feedbackMessages = []
-
-      if (volume > 80) feedbackMessages.push("Try speaking a bit softer")
-      else if (volume < 30) feedbackMessages.push("Speak up a little")
-
-      if (pace > 80) feedbackMessages.push("Slow down your speech")
-      else if (pace < 30) feedbackMessages.push("Try speaking a bit faster")
-
-      if (clarity < 50) feedbackMessages.push("Enunciate more clearly")
-
-      if (feedbackMessages.length > 0) {
-        setFeedback(feedbackMessages[Math.floor(Math.random() * feedbackMessages.length)])
-      } else {
-        setFeedback("Your speech sounds great! Keep it up.")
-      }
-    }
-  }, [volume, pitch, clarity, pace, isRecording])
-
-  const startRecording = async () => {
-    setError("")
-    audioChunksRef.current = []
-    
-    try {
-      // Start local recording visualization
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaStreamRef.current = stream
-
-      // Set up browser's MediaRecorder for actual audio capture
-      audioRecorderRef.current = new MediaRecorder(stream)
-      audioRecorderRef.current.addEventListener("dataavailable", (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
-        }
-      })
-      audioRecorderRef.current.start()
-
-      // Set up audio analysis for visualization
-      audioContextRef.current = new AudioContext()
-      analyserRef.current = audioContextRef.current.createAnalyser()
-      const source = audioContextRef.current.createMediaStreamSource(stream)
-      source.connect(analyserRef.current)
-
-      analyserRef.current.fftSize = 2048
-      const bufferLength = analyserRef.current.frequencyBinCount
-      const dataArray = new Uint8Array(bufferLength)
-
-      const updateMetrics = () => {
-        if (!analyserRef.current || !isRecording) return
-
-        analyserRef.current.getByteFrequencyData(dataArray)
-        const average = dataArray.reduce((a, b) => a + b) / bufferLength
-
-        // Add some natural variation to make it look more realistic
-        setVolume(Math.min((average / 128) * 100, 100))
-        setPitch(Math.min((average / 128) * 100 + Math.random() * 20 - 10, 100))
-        setClarity(Math.min((average / 128) * 80 + Math.random() * 10, 100))
-        setPace(Math.min((average / 128) * 70 + Math.random() * 15, 100))
-
-        animationRef.current = requestAnimationFrame(updateMetrics)
-      }
-
-      setIsRecording(true)
-      updateMetrics()
-      
-      // Notify the backend to start recording
-      try {
-        await fetch(`${API_URL}/start-recording`, {
-          method: 'POST',
-        })
-      } catch (e) {
-        console.warn("Could not start backend recording. Using client-side only.", e)
-      }
-    } catch (error) {
-      console.error("Error accessing microphone:", error)
-      setError("Failed to access microphone. Please check your microphone permissions.")
-    }
-  }
-
-  const stopRecording = async () => {
-    setIsAnalyzing(true)
-    
-    try {
-      // Stop local recording
-      if (audioRecorderRef.current) {
-        audioRecorderRef.current.stop()
-      }
-      
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop())
-      }
-      
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
-      
-      // Try to stop backend recording
-      try {
-        await fetch(`${API_URL}/stop-recording`, {
-          method: 'POST',
-        })
-      } catch (e) {
-        console.warn("Could not stop backend recording. Continuing with analysis.", e)
-      }
-      
-      // Create audio blob and send to server for analysis
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
-      const formData = new FormData()
-      formData.append('audio', audioBlob)
-      
-      const analyzeResponse = await fetch(`${API_URL}/analyze-voice`, {
-        method: 'POST',
-        body: formData,
-      })
-      
-      if (!analyzeResponse.ok) {
-        throw new Error(`Server returned ${analyzeResponse.status}: ${await analyzeResponse.text()}`)
-      }
-      
-      const result = await analyzeResponse.json()
-      setAnalysisResult(result)
-      
-      // Update UI with real analysis values
-      setVolume(Math.min(result.energy_mean * 2000, 100)) // Scale energy to percentage
-      setPitch(Math.min(result.pitch_mean / 4, 100)) // Scale pitch to percentage
-      setClarity(result.confidence_score)
-      setPace(Math.max(0, 100 - result.pause_count * 10)) // Invert pause count
-      
-      // Set feedback based on analysis suggestions
-      if (result.suggestions && result.suggestions.length > 0) {
-        setFeedback(result.suggestions[0])
-      }
-      
-      // Save to performance history
-      const newRecord = {
-        date: new Date().toISOString(),
-        confidence: result.confidence_score,
-        pitch: result.pitch_mean,
-        volume: result.energy_mean * 2000,
-        pauses: result.pause_count,
-        fillers: result.filler_count
-      }
-      
-      const updatedHistory = [...performanceHistory, newRecord].slice(-7) // Keep last 7 records
-      setPerformanceHistory(updatedHistory)
-      localStorage.setItem('voiceAnalysisHistory', JSON.stringify(updatedHistory))
-      
-    } catch (error) {
-      console.error("Error analyzing voice:", error)
-      setError("Failed to analyze recording. Please try again.")
-      // Reset to default metrics
-      setVolume(0)
-      setPitch(0)
-      setClarity(0)
-      setPace(0)
-    } finally {
-      setIsRecording(false)
-      setIsAnalyzing(false)
-    }
-  }
-
-  const getColorForValue = (value) => {
-    if (value > 80) return "#e11d48" // rose-600
-    if (value > 60) return "#f43f5e" // rose-500
-    return "#fb7185" // rose-400
-  }
-
-  const tips = [
-    { text: "Speak clearly and at a steady pace", icon: Activity },
-    { text: "Maintain consistent volume", icon: Volume2 },
-    { text: "Take natural pauses between phrases", icon: Pause },
-    { text: "Practice proper breathing techniques", icon: Waveform },
-  ]
-
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
-      <motion.div
-        className="flex justify-between items-center"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-rose-600 to-rose-400 bg-clip-text text-transparent">
-          Live Voice Analysis
-        </h1>
-        <button
-          className={`px-4 py-2 rounded-full flex items-center gap-2 shadow-md transition-all duration-300 ${
-            isRecording
-              ? "bg-gradient-to-r from-rose-600 to-rose-500 text-white hover:shadow-lg hover:from-rose-700 hover:to-rose-600"
-              : "bg-gradient-to-r from-rose-500 to-rose-400 text-white hover:shadow-lg hover:from-rose-600 hover:to-rose-500"
-          }`}
-          onClick={isRecording ? stopRecording : startRecording}
-          disabled={isAnalyzing}
-        >
-          {isAnalyzing ? (
-            <>
-              <Loader className="w-5 h-5 animate-spin" />
-              <span>Analyzing...</span>
-            </>
-          ) : (
-            <>
-              <Mic className="w-5 h-5" />
-              <span>{isRecording ? "Stop Recording" : "Start Recording"}</span>
-            </>
-          )}
-        </button>
-      </motion.div>
-
-      {/* Error message */}
-      <AnimatePresence>
-        {error && (
-          <motion.div 
-            className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-          >
-            <AlertCircle className="w-5 h-5 text-red-500" />
-            <p className="text-red-700">{error}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <motion.div
-        className="bg-white rounded-2xl shadow-md p-6 border border-rose-100"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <div className="relative h-48 bg-gradient-to-br from-rose-50 to-white rounded-xl flex items-center justify-center mb-8 overflow-hidden border border-rose-100">
-          <AnimatePresence>
-            {isRecording ? (
-              <motion.div
-                className="absolute inset-0 flex items-center justify-center"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                key="recording"
-              >
-                <div className="relative">
-                  {[1, 2, 3].map((i) => (
-                    <motion.div
-                      key={i}
-                      className="absolute inset-0 bg-rose-500 rounded-full opacity-20"
-                      animate={{
-                        scale: [1, 1.5 + i * 0.2, 1],
-                        opacity: [0.2, 0.1, 0.2],
-                      }}
-                      transition={{
-                        duration: 2 + i * 0.3,
-                        repeat: Number.POSITIVE_INFINITY,
-                        ease: "easeInOut",
-                        delay: i * 0.2,
-                      }}
-                    />
-                  ))}
-                  <Mic className="w-16 h-16 text-rose-600 relative z-10" />
-                </div>
-
-                {/* Animated waveform */}
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center items-end h-16">
-                  {Array.from({ length: 20 }).map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="w-1 mx-0.5 bg-rose-400 rounded-full"
-                      animate={{
-                        height: [Math.random() * 20 + 5, Math.random() * 40 + 10, Math.random() * 20 + 5],
-                      }}
-                      transition={{
-                        duration: 0.8,
-                        repeat: Number.POSITIVE_INFINITY,
-                        repeatType: "reverse",
-                        delay: i * 0.05,
-                      }}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                className="flex flex-col items-center justify-center gap-3"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                key="not-recording"
-              >
-                <Volume2 className="w-16 h-16 text-rose-300" />
-                <p className="text-rose-400 text-lg">Click "Start Recording" to begin analysis</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { label: "Volume", value: volume, icon: Volume2 },
-            { label: "Pitch", value: pitch, icon: Gauge },
-            { label: "Clarity", value: clarity, icon: MessageSquare },
-            { label: "Pace", value: pace, icon: Activity },
-          ].map((metric, index) => (
-            <motion.div
-              key={metric.label}
-              className="space-y-3"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 + index * 0.1 }}
-            >
-              <div className="flex items-center gap-2">
-                <metric.icon className="w-5 h-5 text-rose-500" />
-                <span className="font-medium text-gray-700">{metric.label}</span>
-                <span className="ml-auto font-bold text-rose-600">{Math.round(metric.value)}%</span>
-              </div>
-              <div className="h-3 bg-rose-100 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{
-                    backgroundColor: getColorForValue(metric.value),
-                    width: `${metric.value}%`,
-                  }}
-                  initial={{ width: "0%" }}
-                  animate={{ width: `${metric.value}%` }}
-                  transition={{ duration: 0.5 }}
-                />
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Live feedback */}
-        <AnimatePresence>
-          {feedback && (
-            <motion.div
-              className="mt-6 bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-center gap-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-            >
-              <AlertCircle className="w-5 h-5 text-rose-500" />
-              <p className="text-rose-700 font-medium">{feedback}</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        {/* Result PDF download */}
-        <AnimatePresence>
-          {analysisResult && analysisResult.report_pdf && (
-            <motion.div
-              className="mt-6"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <a 
-                href={`data:application/pdf;base64,${analysisResult.report_pdf}`}
-                download="voice-analysis-report.pdf"
-                className="block w-full text-center bg-rose-100 hover:bg-rose-200 text-rose-700 font-medium py-3 px-4 rounded-lg transition-colors duration-300"
-              >
-                Download Full Analysis Report (PDF)
-              </a>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      <motion.div
-        className="bg-white rounded-2xl shadow-md p-6 border border-rose-100"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <Waveform className="w-5 h-5 text-rose-500" />
-          <span>Voice Improvement Tips</span>
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {analysisResult && analysisResult.suggestions ? (
-            // Show real suggestions from analysis
-            analysisResult.suggestions.slice(0, 4).map((tip, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 + index * 0.1 }}
-                className="bg-gradient-to-r from-rose-50 to-white rounded-lg p-4 flex items-center gap-3 border border-rose-100 hover:shadow-md transition-shadow duration-300"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="bg-rose-100 p-2 rounded-full">
-                  <AlertCircle className="w-5 h-5 text-rose-600" />
-                </div>
-                <p className="text-gray-700 font-medium">{tip}</p>
-              </motion.div>
-            ))
-          ) : (
-            // Show default tips
-            tips.map((tip, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 + index * 0.1 }}
-                className="bg-gradient-to-r from-rose-50 to-white rounded-lg p-4 flex items-center gap-3 border border-rose-100 hover:shadow-md transition-shadow duration-300"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="bg-rose-100 p-2 rounded-full">
-                  <tip.icon className="w-5 h-5 text-rose-600" />
-                </div>
-                <p className="text-gray-700 font-medium">{tip.text}</p>
-              </motion.div>
-            ))
-          )}
-        </div>
-      </motion.div>
-
-      {/* Performance insights card */}
-      <motion.div
-        className="bg-white rounded-2xl shadow-md p-6 border border-rose-100"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-      >
-        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-rose-500" />
-          <span>Performance History</span>
-        </h2>
-
-        <div className="h-64 relative">
-          {/* Chart visualization */}
-          <div className="absolute inset-0 flex items-end justify-between px-2">
-            {performanceHistory.length > 0 ? (
-              // Real performance history data
-              performanceHistory.map((record, i) => {
-                const date = new Date(record.date)
-                return (
-                  <div key={i} className="flex flex-col items-center gap-2 w-1/8">
-                    <div className="relative w-full">
-                      <motion.div
-                        className="w-8 bg-rose-400 rounded-t-lg mx-auto"
-                        style={{ height: `${record.confidence}%` }}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${record.confidence}%` }}
-                        transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
-                      />
-                      <motion.div
-                        className="w-8 bg-rose-200 rounded-t-lg mx-auto absolute bottom-0 left-0 right-0"
-                        style={{ height: `${(record.volume / 100) * 20}%` }}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${(record.volume / 100) * 20}%` }}
-                        transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {date.toLocaleDateString("en-US", { weekday: "short" })}
-                    </span>
-                  </div>
-                )
-              })
-            ) : (
-              // Placeholder data
-              Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-2 w-1/8">
-                  <div className="relative w-full">
-                    <motion.div
-                      className="w-8 bg-rose-400 rounded-t-lg mx-auto"
-                      style={{ height: `${Math.random() * 50 + 30}%` }}
-                      initial={{ height: 0 }}
-                      animate={{ height: `${Math.random() * 50 + 30}%` }}
-                      transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
-                    />
-                    <motion.div
-                      className="w-8 bg-rose-200 rounded-t-lg mx-auto absolute bottom-0 left-0 right-0"
-                      style={{ height: `${Math.random() * 20 + 10}%` }}
-                      initial={{ height: 0 }}
-                      animate={{ height: `${Math.random() * 20 + 10}%` }}
-                      transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-500">
-                    {new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", {
-                      weekday: "short",
-                    })}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Chart grid lines */}
-          <div className="absolute inset-0 flex flex-col justify-between">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className="w-full h-px bg-gray-100 flex items-center">
-                <span className="text-xs text-gray-400 bg-white pr-2">{100 - i * 25}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  )
+interface VoiceMetrics {
+  volume: number;
+  pitch: number;
+  clarity: number;
+  pace: number;
 }
 
-export default VoiceAnalysis
+const VoiceAnalysis = () => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<VoiceMetrics>({
+    volume: 0,
+    pitch: 0,
+    clarity: 0,
+    pace: 0
+  });
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [remainingTime, setRemainingTime] = useState(20);
+  const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const statusCheckInterval = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Check microphone permission status on component mount
+    checkMicrophonePermission();
+    return () => {
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+      }
+      if (statusCheckInterval.current) {
+        clearInterval(statusCheckInterval.current);
+      }
+    };
+  }, [isRecording]);
+
+  const checkMicrophonePermission = async () => {
+    try {
+      // First check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError('Your browser does not support audio recording. Please try a different browser.');
+        return;
+      }
+
+      // Try to get a media stream to check permissions
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      setHasMicrophonePermission(true);
+      setError(null);
+    } catch (error) {
+      console.error('Error checking microphone permission:', error);
+      setHasMicrophonePermission(false);
+      setError('Microphone access denied. Please allow microphone access in your browser settings.');
+    }
+  };
+
+  const requestMicrophonePermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop()); // Stop the stream immediately
+      setHasMicrophonePermission(true);
+      setError(null);
+    } catch (error) {
+      console.error('Error requesting microphone permission:', error);
+      setHasMicrophonePermission(false);
+      setError('Microphone access denied. Please allow microphone access in your browser settings.');
+    }
+  };
+
+  const checkRecordingStatus = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/recording-status`);
+      if (response.data.is_recording) {
+        setRemainingTime(Math.floor(response.data.remaining_time));
+        if (response.data.remaining_time <= 0) {
+          handleStopRecording();
+        }
+      }
+    } catch (error) {
+      console.error('Error checking recording status:', error);
+    }
+  };
+
+  const handleStartRecording = async () => {
+    try {
+      console.log('Starting recording process...');
+      
+      // First check permissions again
+      await checkMicrophonePermission();
+      if (!hasMicrophonePermission) {
+        console.log('No microphone permission');
+        return;
+      }
+
+      console.log('Starting backend recording...');
+      // Start recording on the backend
+      const backendResponse = await axios.post(`${API_BASE_URL}/start-recording`);
+      console.log('Backend recording started:', backendResponse.data);
+      
+      console.log('Requesting microphone access...');
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 22050  // Match the backend sample rate
+        } 
+      });
+      console.log('Microphone access granted, creating MediaRecorder...');
+      
+      // Check supported MIME types
+      const mimeTypes = ['audio/webm', 'audio/ogg', 'audio/mp4'];
+      let selectedMimeType = '';
+      for (const type of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          selectedMimeType = type;
+          break;
+        }
+      }
+      
+      if (!selectedMimeType) {
+        throw new Error('No supported audio MIME type found. Please try a different browser.');
+      }
+      
+      console.log('Using MIME type:', selectedMimeType);
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: selectedMimeType });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        console.log('Data available:', event.data.size, 'bytes');
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        try {
+          console.log('Recording stopped, processing audio...');
+          const audioBlob = new Blob(audioChunksRef.current, { type: selectedMimeType });
+          const formData = new FormData();
+          formData.append('file', audioBlob);
+
+          console.log('Sending audio for analysis...');
+          const response = await axios.post(`${API_BASE_URL}/analyze-voice`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+          console.log('Analysis complete:', response.data);
+
+          setAnalysisResult(response.data.confidence_level);
+          setMetrics({
+            volume: response.data.volume,
+            pitch: response.data.pitch_mean,
+            clarity: response.data.clarity,
+            pace: response.data.pace
+          });
+        } catch (error) {
+          console.error('Error analyzing voice:', error);
+          if (axios.isAxiosError(error)) {
+            if (error.response) {
+              setError(`Failed to analyze voice: ${error.response.data.detail || error.message}`);
+            } else if (error.request) {
+              setError('Failed to reach the server. Please check your internet connection.');
+            } else {
+              setError('Failed to analyze voice: ' + error.message);
+            }
+          } else {
+            setError('Failed to analyze voice: ' + (error as Error).message);
+          }
+        }
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+        setError('Error during recording: ' + event.error.message);
+      };
+
+      console.log('Starting MediaRecorder...');
+      mediaRecorder.start(1000); // Collect data every second
+      setIsRecording(true);
+      setError(null);
+      setRemainingTime(20);
+      
+      // Start checking recording status every second
+      statusCheckInterval.current = setInterval(checkRecordingStatus, 1000);
+    } catch (error) {
+      console.error('Error in handleStartRecording:', error);
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          setError(`Failed to start recording: ${error.response.data.detail || error.message}`);
+        } else if (error.request) {
+          setError('Failed to reach the server. Please check your internet connection.');
+        } else {
+          setError('Failed to start recording: ' + error.message);
+        }
+      } else {
+        setError('Failed to start recording: ' + (error as Error).message);
+      }
+      setHasMicrophonePermission(false);
+    }
+  };
+
+  const handleStopRecording = async () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setRemainingTime(20);
+      
+      if (statusCheckInterval.current) {
+        clearInterval(statusCheckInterval.current);
+      }
+
+      try {
+        await axios.post(`${API_BASE_URL}/stop-recording`);
+      } catch (error) {
+        console.error('Error stopping recording:', error);
+        setError('Failed to stop recording');
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Voice Analysis</h1>
+        <div className="flex gap-4">
+          {hasMicrophonePermission === false && (
+            <Button
+              variant="primary"
+              icon={<MicOff className="w-5 h-5" />}
+              onClick={requestMicrophonePermission}
+            >
+              Allow Microphone Access
+            </Button>
+          )}
+          {hasMicrophonePermission !== false && (
+            <Button
+              variant={isRecording ? 'danger' : 'primary'}
+              icon={<Mic className="w-5 h-5" />}
+              onClick={isRecording ? handleStopRecording : handleStartRecording}
+              disabled={!hasMicrophonePermission}
+            >
+              {isRecording ? `Stop Recording (${remainingTime}s)` : 'Start Recording'}
+            </Button>
+          )}
+          {analysisResult && (
+            <Button
+              variant="secondary"
+              icon={<Download className="w-5 h-5" />}
+              onClick={() => window.print()}
+            >
+              Download Report
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
+          <AlertCircle className="w-5 h-5 text-red-500" />
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
+
+      {hasMicrophonePermission === false && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h3 className="text-yellow-800 font-semibold mb-2">Microphone Access Required</h3>
+          <p className="text-yellow-700">
+            To use the voice analysis feature, please allow microphone access in your browser.
+            Click the "Allow Microphone Access" button above and grant permission when prompted.
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Volume</h3>
+          <div className="w-full h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-full bg-indigo-600 rounded-full"
+              style={{ width: `${metrics.volume}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-500 mt-2">{metrics.volume}%</p>
+        </Card>
+
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Pitch</h3>
+          <div className="w-full h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-full bg-indigo-600 rounded-full"
+              style={{ width: `${metrics.pitch}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-500 mt-2">{metrics.pitch}%</p>
+        </Card>
+
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Clarity</h3>
+          <div className="w-full h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-full bg-indigo-600 rounded-full"
+              style={{ width: `${metrics.clarity}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-500 mt-2">{metrics.clarity}%</p>
+        </Card>
+
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Pace</h3>
+          <div className="w-full h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-full bg-indigo-600 rounded-full"
+              style={{ width: `${metrics.pace}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-500 mt-2">{metrics.pace}%</p>
+        </Card>
+      </div>
+
+      {analysisResult && (
+        <Card>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Analysis Results</h2>
+          <div className="prose max-w-none">
+            <p className="text-gray-600">{analysisResult}</p>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default VoiceAnalysis;
