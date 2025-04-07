@@ -41,9 +41,12 @@ def store_in_db(g_id, g_name):
 def store_images(g_id):
 	total_pics = 1200
 	hist = get_hand_hist()
-	cam = cv2.VideoCapture(1)
+	cam = cv2.VideoCapture(0)
 	if cam.read()[0]==False:
-		cam = cv2.VideoCapture(0)
+		cam = cv2.VideoCapture(1)
+	if cam.read()[0]==False:
+		print("Error: Could not access the camera. Please make sure a camera is connected and try again.")
+		return
 	x, y, w, h = 300, 100, 300, 300
 
 	create_folder("gestures/"+str(g_id))

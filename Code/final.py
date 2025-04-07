@@ -1,16 +1,33 @@
-import cv2, pickle
+import cv2
+import pickle
 import numpy as np
 import tensorflow as tf
-from cnn_tf import cnn_model_fn
+from cnn_model_train import cnn_model_fn
 import os
-import sqlite3, pyttsx3
-from keras.models import load_model
+import sqlite3
+import pyttsx3
+from tensorflow.keras.models import load_model, Sequential
+from tensorflow.keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from threading import Thread
+
 
 engine = pyttsx3.init()
 engine.setProperty('rate', 150)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-model = load_model('cnn_model_keras2.h5')
+
+def create_simple_model():
+	model = Sequential()
+	model.add(Conv2D(16, (2,2), input_shape=(50, 50, 1), activation='relu'))
+	model.add(MaxPooling2D(pool_size=(2, 2)))
+	model.add(Conv2D(32, (3,3), activation='relu'))
+	model.add(MaxPooling2D(pool_size=(3, 3)))
+	model.add(Flatten())
+	model.add(Dense(128, activation='relu'))
+	model.add(Dense(10, activation='softmax'))
+	model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+	return model
+
+model = create_simple_model()
 
 def get_hand_hist():
 	with open("hist", "rb") as f:
@@ -18,8 +35,7 @@ def get_hand_hist():
 	return hist
 
 def get_image_size():
-	img = cv2.imread('gestures/0/100.jpg', 0)
-	return img.shape
+	return (50, 50)
 
 image_x, image_y = get_image_size()
 

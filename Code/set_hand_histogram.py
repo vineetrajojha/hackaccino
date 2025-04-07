@@ -26,9 +26,12 @@ def build_squares(img):
 	return crop
 
 def get_hand_hist():
-	cam = cv2.VideoCapture(1)
+	cam = cv2.VideoCapture(0)
 	if cam.read()[0]==False:
-		cam = cv2.VideoCapture(0)
+		cam = cv2.VideoCapture(1)
+	if cam.read()[0]==False:
+		print("Error: Could not access the camera. Please make sure a camera is connected and try again.")
+		return
 	x, y, w, h = 300, 100, 300, 300
 	flagPressedC, flagPressedS = False, False
 	imgCrop = None
