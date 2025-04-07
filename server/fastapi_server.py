@@ -9,20 +9,18 @@ import tempfile
 import asyncio
 from datetime import datetime
 import traceback
-
-app = FastAPI()
+app.use(cors());
+# app = FastAPI()
 
 # Configure CORS - more permissive for development
 app.add_middleware(
     CORSMiddleware,
-   allow_origins=["http://localhost:5175"]
- # More permissive for development
+    allow_origins=["*"],  # More permissive for development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"]
 )
-
 
 # Initialize processors
 sign_processor = SignLanguageProcessor()
